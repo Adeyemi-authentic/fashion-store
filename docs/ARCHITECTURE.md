@@ -75,6 +75,7 @@ erDiagram
       text category
       bigint base_price_kobo
       text status "draft|active|archived"
+      jsonb attributes "fabric, pattern, occasion..."
       vector embedding "pgvector"
       tsvector search_tsv
       timestamptz created_at
@@ -91,7 +92,7 @@ erDiagram
     }
     customers {
       uuid id PK
-      citext email UK
+      text email UK "stored lowercase, CHECK"
       text password_hash "argon2"
       text role "customer|admin"
     }
@@ -108,7 +109,7 @@ erDiagram
     orders {
       uuid id PK
       uuid customer_id FK "null for guests"
-      citext guest_email
+      text guest_email "stored lowercase"
       text status
       bigint total_kobo
       char currency "NGN"
@@ -140,7 +141,7 @@ erDiagram
       uuid order_id FK
     }
     payment_events {
-      text paystack_event_id PK
+      text paystack_event_id PK "event:data.id"
       uuid order_id FK
       text type
       jsonb payload

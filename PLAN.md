@@ -48,7 +48,7 @@ FastAPI app: a single app split into modules (Render)
 | Embeddings | Voyage (already used in earlier weeks) |
 | LLM | Claude API; claude-haiku-5-5 while building, model choice re-checked during evals |
 | Email | Resend free tier, or logged to the console in dev |
-| Tests | pytest (+ testcontainers or a Neon branch for DB tests), Playwright for key flows |
+| Tests | pytest against a throwaway local Postgres 16 + pgvector started by `pgserver` (no Docker needed; decided in Phase 1), Playwright for key flows |
 | Load / concurrency tests | k6 or Locust + a custom asyncio concurrency script |
 | Observability | structured JSON logs + request IDs, Sentry free tier, a `/metrics` endpoint |
 | CI/CD | GitHub Actions (lint, typecheck, tests, migrations check) -> deploy on Render + Vercel |

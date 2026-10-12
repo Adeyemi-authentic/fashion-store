@@ -1,0 +1,62 @@
+[project]
+name = "flyfit-api"
+version = "0.1.0"
+description = "FlyFit API: FastAPI app split into modules, plus the outbox worker"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "alembic>=1.20.0",
+    "fastapi>=0.143.0",
+    "pgvector>=0.5.1",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy[asyncio]>=2.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "import-linter>=2.15",
+    "mypy>=2.4.0",
+    "pgserver>=0.1.4",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*" = ["E501", "UP"]
+
+# ADR-001: modules may only use each other through `service` (public interface).
+[tool.importlinter]
+root_packages = ["app"]
+
+[[tool.importlinter.contracts]]
+name = "Modules use each other only through service.py"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["app.modules.catalog"]
+forbidden_modules = [
+    "app.modules.orders.inventory",
+    "app.modules.orders.models",
+    "app.modules.cart.models",
+    "app.modules.accounts.models",
+    "app.modules.payments.models",
+    "app.modules.assistant.models",
+]

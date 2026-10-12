@@ -1,0 +1,198 @@
+"""Catalog reads. Public interface of the catalog module (ADR-001)."""
+
+import uuid
+from dataclasses import dataclass
+from datetime import datetime
+
+from sqlalchemy import Select, and_, exists, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.modules.catalog.models import Product, ProductImage, Variant
+from app.modules.catalog.schemas import (
+    CategoryOut,
+    ImageOut,
+    ProductCard,
+    ProductDetail,
+    ProductPage,
+    ProductSort,
+    VariantOut,
+)
+from app.modules.orders.service import available_qty
+from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
+
+MAX_PAGE_SIZE = 60
+
+
+@dataclass(frozen=True)
+class ProductFilters:
+    category: str | None = None
+    min_price_kobo: int | None = None
+    max_price_kobo: int | None = None
+    size: str | None = None
+    colour: str | None = None
+    in_stock: bool | None = None
+
+
+def _sort_column(sort: ProductSort):  # type: ignore[no-untyped-def]
+    return {
+        ProductSort.newest: Product.created_at,
+        ProductSort.price_asc: Product.base_price_kobo,
+        ProductSort.price_desc: Product.base_price_kobo,
+        ProductSort.name: Product.name,
+    }[sort]
+
+
+def _is_descending(sort: ProductSort) -> bool:
+    return sort in (ProductSort.newest, ProductSort.price_desc)
+
+
+def _cursor_value(product: Product, sort: ProductSort) -> str | int:
+    value = getattr(product, _sort_column(sort).key)
+    return value.isoformat() if isinstance(value, datetime) else value
+
+
+def _parse_cursor(cursor: str, sort: ProductSort) -> tuple[datetime | int | str, uuid.UUID]:
+    raw_value, raw_id = decode_cursor(cursor, sort.value)
+    expected = {ProductSort.newest: str, ProductSort.name: str}.get(sort, int)
+    try:
+        if not isinstance(raw_value, expected) or isinstance(raw_value, bool):
+            raise ValueError("wrong type")
+        value = datetime.fromisoformat(raw_value) if sort is ProductSort.newest else raw_value
+        return value, uuid.UUID(raw_id)
+    except (TypeError, ValueError) as exc:
+        raise InvalidCursor("cursor is not valid") from exc
+
+
+def _in_stock_clause():  # type: ignore[no-untyped-def]
+    return exists().where(Variant.product_id == Product.id, available_qty() > 0)
+
+
+def _apply_filters(stmt: Select, f: ProductFilters) -> Select:  # type: ignore[type-arg]
+    if f.category:
+        stmt = stmt.where(Product.category == f.category)
+    if f.min_price_kobo is not None:
+        stmt = stmt.where(Product.base_price_kobo >= f.min_price_kobo)
+    if f.max_price_kobo is not None:
+        stmt = stmt.where(Product.base_price_kobo <= f.max_price_kobo)
+    if f.size or f.colour:
+        conds = [Variant.product_id == Product.id]
+        if f.size:
+            conds.append(func.lower(Variant.size) == f.size.lower())
+        if f.colour:
+            conds.append(func.lower(Variant.colour) == f.colour.lower())
+        stmt = stmt.where(exists().where(*conds))
+    if f.in_stock is True:
+        stmt = stmt.where(_in_stock_clause())
+    elif f.in_stock is False:
+        stmt = stmt.where(~_in_stock_clause())
+    return stmt
+
+
+async def list_products(
+    session: AsyncSession,
+    filters: ProductFilters,
+    sort: ProductSort = ProductSort.newest,
+    limit: int = 24,
+    cursor: str | None = None,
+) -> ProductPage:
+    limit = max(1, min(limit, MAX_PAGE_SIZE))
+    col = _sort_column(sort)
+    desc = _is_descending(sort)
+
+    stmt = (
+        select(Product, _in_stock_clause().label("in_stock"))
+        .where(Product.status == "active")
+        .options(selectinload(Product.images))
+    )
+    stmt = _apply_filters(stmt, filters)
+
+    if cursor:
+        value, last_id = _parse_cursor(cursor, sort)
+        # Keyset condition written out instead of a row-value comparison so it works with
+        # mixed directions later; both columns sort the same way here.
+        if desc:
+            stmt = stmt.where(or_(col < value, and_(col == value, Product.id < last_id)))
+        else:
+            stmt = stmt.where(or_(col > value, and_(col == value, Product.id > last_id)))
+
+    order = (col.desc(), Product.id.desc()) if desc else (col.asc(), Product.id.asc())
+    rows = (await session.execute(stmt.order_by(*order).limit(limit + 1))).all()
+
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    items = [_card(product, in_stock) for product, in_stock in rows]
+    next_cursor = None
+    if has_more:
+        last = rows[-1][0]
+        next_cursor = encode_cursor(sort.value, _cursor_value(last, sort), str(last.id))
+    return ProductPage(items=items, next_cursor=next_cursor)
+
+
+def _first_image(images: list[ProductImage]) -> ImageOut | None:
+    return ImageOut(url=images[0].url, alt=images[0].alt) if images else None
+
+
+def _card(product: Product, in_stock: bool) -> ProductCard:
+    return ProductCard(
+        id=product.id,
+        slug=product.slug,
+        name=product.name,
+        category=product.category,
+        price_kobo=product.base_price_kobo,
+        in_stock=bool(in_stock),
+        image=_first_image(product.images),
+    )
+
+
+async def get_product(session: AsyncSession, slug: str) -> ProductDetail | None:
+    product = (
+        await session.execute(
+            select(Product)
+            .where(Product.slug == slug, Product.status == "active")
+            .options(selectinload(Product.images))
+        )
+    ).scalar_one_or_none()
+    if product is None:
+        return None
+
+    variant_rows = (
+        await session.execute(
+            select(Variant, available_qty().label("available"))
+            .where(Variant.product_id == product.id)
+            .order_by(Variant.colour, Variant.price_kobo, Variant.sku)
+        )
+    ).all()
+    variants = [
+        VariantOut(
+            id=v.id,
+            sku=v.sku,
+            size=v.size,
+            colour=v.colour,
+            price_kobo=v.price_kobo,
+            available=max(0, available),
+        )
+        for v, available in variant_rows
+    ]
+    return ProductDetail(
+        id=product.id,
+        slug=product.slug,
+        name=product.name,
+        description=product.description,
+        category=product.category,
+        price_kobo=product.base_price_kobo,
+        attributes=product.attributes,
+        in_stock=any(v.available > 0 for v in variants),
+        variants=variants,
+        images=[ImageOut(url=i.url, alt=i.alt) for i in product.images],
+    )
+
+
+async def list_categories(session: AsyncSession) -> list[CategoryOut]:
+    rows = await session.execute(
+        select(Product.category, func.count())
+        .where(Product.status == "active")
+        .group_by(Product.category)
+        .order_by(Product.category)
+    )
+    return [CategoryOut(slug=category, product_count=count) for category, count in rows]
