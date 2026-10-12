@@ -27,5 +27,5 @@ FOR UPDATE SKIP LOCKED;
 - **Free-tier note:** the worker runs inside the API process. While the Render instance sleeps, jobs run late, but nothing *incorrect* happens, because stock correctness never depends on the worker (ADR-003).
 
 ## Alternatives rejected
-- **Celery + Redis / RQ:** the dual-write problem comes back (commit the order, then the enqueue fails), and it's another service to run. Redis here is allowed to lose data.
+- **Celery + Redis / RQ:** the dual-write problem comes back (commit the order, then the enqueue fails), and it's another service to run (this project has no Redis at all, ADR-006).
 - **FastAPI `BackgroundTasks`:** lost if the process dies, and no retries.

@@ -9,16 +9,17 @@
   - ERD with the invariants tests will check
   - order state machine
   - the full checkout → Paystack → webhook → paid sequence diagram
-- ADRs in `docs/adr/`:
+- ADRs in `docs/adr/` (006 added after review):
   - 001 one app split into modules
   - 002 Postgres outbox queue
   - 003 inventory holds (including late payments and expiry checked on read)
   - 004 kobo integers
   - 005 same-origin API via Next.js rewrites
+  - 006 no Redis: Postgres + Next.js ISR + an in-process cache
 - `.env.example` covering every service, each value tagged with which app reads it. `.gitignore` keeps `.env` out of git.
 
 ## Why, and the trade-offs
-- **Correctness lives in Postgres.** Stock holds, order state and jobs are all changed in single transactions. Redis only holds things that are safe to lose. Cost: the database does more work, and a hot item queues on one row. Both are fine at this scale, and ADR-003 gives the upgrade path.
+- **Correctness lives in Postgres.** Stock holds, order state and jobs are all changed in single transactions. Caches only hold things that are safe to lose, and there is no Redis (ADR-006, added after review). Cost: the database does more work, and a hot item queues on one row. Both are fine at this scale, and ADR-003 gives the upgrade path.
 - **Nothing depends on the worker being awake.** That's what makes the $0 hosting option (worker inside the API on a free tier that sleeps) safe instead of a hidden bug.
 - **The browser only talks to one origin.** It costs one extra network hop per API call, but cookies work in Safari.
 
@@ -27,7 +28,7 @@
 - `CHECK (0 <= stock_reserved <= stock_on_hand)` constraints act as a backstop against bugs.
 - The callback page and the webhook share one idempotent `apply_successful_charge()`. Whichever arrives first wins, and the second does nothing.
 - Paystack `initialize` is called **after** the checkout transaction commits, never inside it.
-- Rate limits: if Redis is down, checkout keeps working (fail open) but the assistant is blocked (fail closed), because the assistant costs money.
+- Rate limits live in an `UNLOGGED` Postgres table; the assistant's spend cap is a normal Postgres row.
 - Outbox jobs get a lease (`locked_until`), so a worker that dies mid-job gives the job back.
 - Server-side `sessions` table (stores a hashed token), not JWTs, so logout and revoking a session actually work.
 
@@ -36,10 +37,9 @@
 
 ## Your to-do (needs your logins)
 1. **Neon:** create a **new** project `flyfit` (region: AWS eu-central-1 or the closest to Lagos/Render), then run `CREATE EXTENSION vector;`. Copy the **pooled** URL into `DATABASE_URL` and the **direct** URL into `DATABASE_URL_DIRECT`. Change the scheme to `postgresql+psycopg://`.
-2. **Upstash:** create a Redis database (free tier, same region) and copy the `rediss://` URL into `REDIS_URL`.
-3. **Paystack:** create an account and stay in **test mode**. Copy `sk_test_…` and `pk_test_…`. You'll set the webhook URL in Phase 4, once there's a public URL. Locally we'll use a tunnel.
-4. Copy `.env.example` → `.env` and fill these in. **Don't paste keys into chat.** I only need to know they're set.
-5. Optional: run `gh auth login` so the repo can be pushed to GitHub later.
+2. **Paystack:** create an account and stay in **test mode**. Copy `sk_test_…` and `pk_test_…`. You'll set the webhook URL in Phase 4, once there's a public URL. Locally we'll use a tunnel.
+3. Copy `.env.example` → `.env` and fill these in. **Don't paste keys into chat.** I only need to know they're set.
+4. Optional: run `gh auth login` so the repo can be pushed to GitHub later.
 
 ## Done when
 You can explain the checkout sequence diagram (ARCHITECTURE.md §4) end to end without notes.

@@ -33,5 +33,5 @@ Zero rows updated means out of stock, and the whole checkout transaction rolls b
 ## Alternatives rejected
 - **`SELECT ... FOR UPDATE`, then check in Python, then `UPDATE`:** correct, but more round trips while the lock is held. The single statement does the same job.
 - **Optimistic locking with a `version` column + retries:** under heavy contention most attempts fail and retry. Not needed when one conditional UPDATE does it.
-- **Redis `DECR` counters:** fast, but Redis is not the source of truth here (ADR-002), and keeping it in sync with Postgres brings back the dual-write problem.
+- **Redis `DECR` counters:** fast, but it adds a second store that must be kept in sync with Postgres (and there is no Redis in this project, ADR-006). Keeping it in sync with Postgres brings back the dual-write problem.
 - **No hold (only deduct when paid):** overselling is then guaranteed, because two people pay for the last unit.

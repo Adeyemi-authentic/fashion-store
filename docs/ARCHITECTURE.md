@@ -17,8 +17,7 @@ flowchart TB
       accounts --- admin --- search --- assistant
     end
 
-    A --> DB[("Neon Postgres + pgvector<br/>source of truth + outbox queue")]
-    A --> R[("Upstash Redis<br/>cache + rate limits")]
+    A --> DB[("Neon Postgres + pgvector<br/>source of truth, outbox queue,<br/>rate limits")]
     WK["Worker loop<br/>(outbox jobs, FOR UPDATE SKIP LOCKED)"] --> DB
     WK --> EXT["Resend · Paystack refunds · Voyage · Claude"]
     A --> EXT
@@ -29,7 +28,7 @@ flowchart TB
 | Next.js | Pages, and the proxy for every browser API call | The browser never calls the API domain directly ([ADR-005](adr/005-same-origin-api.md)) |
 | FastAPI | All business logic | Each module owns its tables and is used by other modules only through its service interface ([ADR-001](adr/001-modular-monolith.md)) |
 | Postgres | Every durable fact, plus the job queue | A job is written in the same transaction as the change that caused it ([ADR-002](adr/002-postgres-outbox-queue.md)) |
-| Redis | Catalog cache, rate limits | Must be safe to lose at any time. Nothing in Redis is ever the only copy |
+| Caches | Next.js ISR for pages; in-process TTL cache for catalog API responses | Safe to lose at any time; never the only copy. No Redis ([ADR-006](adr/006-no-redis.md)) |
 | Worker | Emails, refunds, hold clean-up, embeddings, alerts | At least once, so every side effect is idempotent. Runs inside the API process on the free tier |
 
 ### Module → table ownership
@@ -42,7 +41,7 @@ flowchart TB
 | payments | `payment_events` |
 | accounts | `customers`, `sessions` |
 | assistant | `assistant_sessions`, `assistant_messages` |
-| (shared infra) | `outbox_jobs` |
+| (shared infra) | `outbox_jobs`, `rate_limits` (UNLOGGED) |
 
 `admin` and `search` own no tables. They call the other modules' services. One exception is allowed and written down: stock changes (`variants.stock_*`) happen only inside `orders.inventory`, never in `catalog`, so that all the concurrency rules live in one file.
 
@@ -146,6 +145,11 @@ erDiagram
       text type
       jsonb payload
       timestamptz processed_at
+    }
+    rate_limits {
+      text key PK "e.g. checkout:ip:1.2.3.4"
+      timestamptz window_start PK
+      int count
     }
     outbox_jobs {
       bigint id PK
@@ -259,5 +263,6 @@ sequenceDiagram
 
 - **Request IDs:** Next.js sets `X-Request-ID` if it is missing. The API logs it on every line and copies it into each outbox job's payload, so one checkout can be traced from browser to email.
 - **Logs:** JSON lines (`ts, level, request_id, module, event, ...`). No card data ever reaches us (Paystack hosts the payment page), and emails are masked in logs.
-- **Rate limits (Redis):** checkout and assistant, per IP and per customer. If Redis is down, checkout still works (fail open) but the assistant is blocked (fail closed), because the assistant is the part that costs money.
+- **Rate limits (Postgres, ADR-006):** checkout and assistant, per IP and per customer, as fixed-window counters in an `UNLOGGED` table (one upsert per request). The assistant's daily spend cap is a normal (logged) row, because it is money.
+- **Caching:** product pages use Next.js ISR, revalidated when a product changes. Catalog API responses use an in-process TTL cache (60 s), cleared in the same process when admin edits a product. This is correct while there is one API instance; ADR-006 says what changes at two.
 - **Config:** everything comes from environment variables (see [`.env.example`](../.env.example)). The brand name is one variable.

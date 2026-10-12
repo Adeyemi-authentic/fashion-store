@@ -21,11 +21,10 @@ Next.js storefront (Vercel)
         |  HTTPS (JSON)
 FastAPI app: a single app split into modules (Render)
   catalog | cart | orders | payments | accounts | admin | search | assistant
-        |               |                 |
-  Neon Postgres     Upstash Redis     Worker process
-  + pgvector        (cache, rate      (outbox jobs via
-  (source of        limits)           FOR UPDATE SKIP LOCKED)
-   truth)
+        |                         |
+  Neon Postgres + pgvector     Worker process
+  (source of truth, job        (outbox jobs via
+   queue, rate limits)          FOR UPDATE SKIP LOCKED)
         ^
   Paystack ---- webhook ----> /payments/webhook
 ```
@@ -34,7 +33,9 @@ FastAPI app: a single app split into modules (Render)
 
 **Why the browser only talks to the Next.js domain:** the storefront (Vercel) and API (Render) are on different domains, so a session cookie set by the API would be a third-party cookie, which Safari blocks and Chrome restricts. All browser calls go to `/api/*` on the storefront domain, and Next.js rewrites them to the API. Cookies are then first-party (`HttpOnly; Secure; SameSite=Lax`), and CORS is not needed. Paystack webhooks go straight to the API, since no cookie is involved. (Alternative if a custom domain is bought later: `flyfit.example` + `api.flyfit.example`.) Written up as ADR-005.
 
-**Why a Postgres job queue instead of a Redis queue or Celery:** a job is written in the same transaction as the order (the outbox pattern), so an order can never exist without its follow-up jobs, and no extra infrastructure is needed. Redis is used only for caching and rate limiting, where losing data is acceptable.
+**Why a Postgres job queue instead of a Redis queue or Celery:** a job is written in the same transaction as the order (the outbox pattern), so an order can never exist without its follow-up jobs, and no extra infrastructure is needed.
+
+**Why no Redis (ADR-006, decided 2026-10-12):** at this size Postgres does everything Redis would. Next.js page caching (ISR) and a small in-process cache handle the catalog, an `UNLOGGED` Postgres table handles rate limits, and the spend cap is a Postgres row. One fewer service and set of keys. Redis gets added only if the Phase 8 load test misses the latency target, and the measurement is the reason.
 
 ### Stack
 | Layer | Choice |
@@ -42,7 +43,7 @@ FastAPI app: a single app split into modules (Render)
 | Storefront | Next.js (App Router) + TypeScript + Tailwind |
 | API | FastAPI, Python, SQLAlchemy 2 + Alembic migrations, Pydantic |
 | Database | Neon Postgres + pgvector (a new Neon project; never reuse another project's DB URL) |
-| Cache / rate limit | Upstash Redis |
+| Cache / rate limit | Next.js ISR + in-process TTL cache; rate limits in an `UNLOGGED` Postgres table (no Redis, ADR-006) |
 | Payments | Paystack test mode (amounts in kobo, webhook signature = HMAC-SHA512 in `x-paystack-signature`) |
 | Embeddings | Voyage (already used in earlier weeks) |
 | LLM | Claude API; claude-haiku-5-5 while building, model choice re-checked during evals |
@@ -53,7 +54,7 @@ FastAPI app: a single app split into modules (Render)
 | CI/CD | GitHub Actions (lint, typecheck, tests, migrations check) -> deploy on Render + Vercel |
 
 ### Running cost target: about $0/month
-Free tiers for Neon, Upstash, Vercel, Render web service, Sentry and Paystack test mode. **Open decision (Phase 9):** a Render background worker costs about $7/month. The free alternative is running the worker loop inside the API process. **Leaning: free option.** It is safe because stock availability ignores expired holds on read (Phase 4), so nothing breaks while the free Render instance sleeps; jobs just run late. Known limitations to document: emails are delayed after idle periods, and the first webhook after a sleep hits a cold start (Paystack retries, so it is still delivered).
+Free tiers for Neon, Vercel, Render web service, Sentry and Paystack test mode. **Open decision (Phase 9):** a Render background worker costs about $7/month. The free alternative is running the worker loop inside the API process. **Leaning: free option.** It is safe because stock availability ignores expired holds on read (Phase 4), so nothing breaks while the free Render instance sleeps; jobs just run late. Known limitations to document: emails are delayed after idle periods, and the first webhook after a sleep hits a cold start (Paystack retries, so it is still delivered).
 
 ---
 
@@ -91,7 +92,7 @@ Moves between states go through one function only, which rejects any move not on
 - Folder layout `web/`, `api/`, `notes/`, `docs/`; git repo (commits as Adeyemi-authentic).
 - `docs/ARCHITECTURE.md`: the diagram above, an entity-relationship diagram (ERD), and a sequence diagram for checkout -> Paystack -> webhook -> paid.
 - ADRs: 001 one app with modules vs microservices, 002 Postgres outbox queue, 003 inventory reservation strategy (including late payments after a hold expires), 004 price stored in kobo as integers, 005 same-origin API via Next.js rewrites (first-party cookies).
-- New Neon project, Upstash DB, Paystack test account (needs your login), `.env.example`.
+- New Neon project, Paystack test account (needs your login), `.env.example`.
 - **Done when:** you can explain the checkout sequence diagram end to end without notes.
 
 ### Phase 1: Data model, catalog seed, API skeleton (2 sessions)
@@ -133,9 +134,9 @@ Moves between states go through one function only, which rejects any move not on
 - Worker: claims jobs with `SELECT ... FOR UPDATE SKIP LOCKED`, retries with exponential backoff, moves a job to `dead` after N attempts (a dead-letter queue), and is safe to run as 2+ copies at once.
 - Jobs: order confirmation email, expiring stale holds (scheduled), refreshing embeddings when a product changes, a low-stock alert to admin, Paystack refunds for late payments.
 - Jobs run at least once, so each side effect carries its own idempotency key: emails send the job ID as Resend's `Idempotency-Key`; refunds check for an existing refund on the transaction before creating one.
-- Redis: catalog cache that is cleared when a product changes (cache-aside), and per-IP + per-user rate limits on checkout and the assistant.
+- Caching without Redis: Next.js ISR for product pages (revalidated when a product changes) + an in-process TTL cache for catalog API responses, cleared when a product changes. Per-IP + per-customer rate limits on checkout and the assistant, using fixed-window counters in an `UNLOGGED` Postgres table (old windows cleared by a worker job).
 - Observability: request ID passed through logs and jobs, Sentry, `/metrics` (request latency, job queue depth, failed jobs).
-- **Done when:** killing the worker mid-job loses no jobs and runs none twice where it matters (tested); a cache hit shows up in the logs.
+- **Done when:** killing the worker mid-job loses no jobs and runs none twice where it matters (tested); a cache hit shows up in the logs; the 11th checkout attempt in a minute from one IP gets a 429 (tested).
 
 ### Phase 6: AI search, recommendations, description pipeline (2-3 sessions)
 - Hybrid search: Postgres full-text + pgvector similarity, merged with reciprocal rank fusion. An LLM turns a messy query into filters ("wedding outfit under 50k" -> category, max price, occasion).
@@ -161,7 +162,7 @@ Targets written now, before building (only change them with a written reason):
 | Assistant made-up prices | 0 |
 | Assistant reading another customer's order | 0 |
 | Prompt injection via product text / user message | 100% resisted |
-| Catalog API p95 latency (cached) | < 200 ms at the tested request rate (rate recorded in the results) |
+| Catalog API p95 latency (cached) | < 200 ms at the tested request rate (rate recorded in the results). Measured without Redis first; Redis is added only if this target is missed (ADR-006) |
 | Assistant cost and latency | reported per conversation (for example "2.1 s, $0.004") |
 
 - Results in `evals/RESULTS.md` with the commands to re-run them.
@@ -188,6 +189,7 @@ Read this before starting Phase 0, 2, 4 and 5. Each item says what can go wrong,
 | 4 | Idempotency holes: same key with a different body, two requests with the same key at once, emails/refunds repeated by at-least-once jobs. | `idempotency_keys` table (request hash + status). Done -> stored response; in progress -> 409 + Retry-After; different body -> 422. Each job side effect has its own idempotency key (Resend `Idempotency-Key` = job ID; refunds check for an existing refund first). | Section 2, Phase 4 checkout, Phase 5 jobs |
 | 5 | Render free tier sleeps, so an in-process worker does not release expired holds and stock looks sold out. | Availability ignores holds whose `expires_at` has passed, at read time. The expiry job only tidies up. Correctness never depends on the worker being awake. | Phase 4 stock hold, Section 1 cost note |
 | 6 | Smaller items. | Drop `variants.version` (the conditional UPDATE already prevents overselling). Test that `stock_reserved` = sum of unreleased reservations. Add `cancelled` state. Model `claude-haiku-5-5`. | Section 2, Phase 4 tests, Stack |
+| 7 | Redis was an extra service with no measured need. | Dropped (ADR-006). Postgres + Next.js ISR + an in-process cache; Phase 8 decides if Redis is ever needed. | Section 1, Phase 5, Phase 8 |
 
 **Brand note:** FlyFit is the chosen name, but a US company (FLYFIT Holdings LLC) holds a FLYFIT apparel trademark. Keep the name in one config value, label everything as a fictional concept build, and don't imitate their branding. Revisit before the public launch in Phase 9.
 
