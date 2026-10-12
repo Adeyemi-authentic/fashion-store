@@ -40,7 +40,7 @@ STYLE = (
 SIZE = "1024x1536"  # portrait; the storefront crops to 4:5
 QUALITY = "medium"
 CONCURRENCY = 3
-MAX_ATTEMPTS = 4
+MAX_ATTEMPTS = 6
 
 # One womenswear, one menswear, one accessory: enough to judge the style before paying for 150.
 SAMPLE_CATEGORIES = ("ankara", "agbada-kaftans", "accessories")
@@ -53,6 +53,24 @@ class ImageSettings(BaseSettings):
     image_gen_model: str = "gpt-image-2"
 
 
+# Flat-lay items need concrete Nigerian craft detail, otherwise the model drifts to generic
+# boutique pieces (seen in the first sample run).
+FLAT_LAY_DETAIL = {
+    "Beaded Necklace": "traditional Yoruba-style multi-strand necklace of glass and "
+    "coral-coloured beads",
+    "Coral Bead Set": "Edo and Yoruba bridal coral bead set: layered coral bead necklace "
+    "with matching bracelet and earrings",
+    "Leather Tote": "structured leather tote handcrafted in Nigeria, with an ankara print "
+    "panel and trim",
+    "Woven Clutch": "clutch bag covered in hand-woven aso-oke fabric with a gold clasp",
+    "Brass Cuff": "hand-beaten brass cuff bracelet engraved with West African motifs",
+    "Hand Fan": "traditional Nigerian abebe hand fan in leather and raffia with a beaded edge",
+    "Scarf": "adire indigo resist-dyed cotton scarf, neatly folded to show the pattern",
+    "Gele and Ipele Set": "aso-oke gele headwrap fabric with a matching ipele shoulder sash, "
+    "neatly folded",
+}
+
+
 def build_prompt(p: SeedProduct) -> str:
     a = p.attributes
     wearer = {
@@ -61,7 +79,8 @@ def build_prompt(p: SeedProduct) -> str:
         "unisex": "worn by a Nigerian model",
     }[a["gender"]]
     if a["fit"] == "one size":  # accessories, scarves, gele sets, headwear
-        subject = f"{a['type']} in {a['colours'][0]}, made of {a['fabric']}, styled flat-lay"
+        detail = FLAT_LAY_DETAIL.get(a["type"], f"{a['type']} made of {a['fabric']}")
+        subject = f"{detail}, in {a['colours'][0]}, styled flat-lay"
         if p.category == "headwear":
             subject = (
                 f"{a['type']} in {a['colours'][0]}, {a['fabric']}, {wearer}, head and shoulders"
@@ -104,7 +123,10 @@ async def generate(client: httpx.AsyncClient, settings: ImageSettings, prompt: s
             except (ValueError, KeyError, TypeError):
                 message = resp.text[:300]
             raise ImageError(f"HTTP {resp.status_code}: {message}")
-        await asyncio.sleep(2**attempt + random.random())
+        # Image rate limits on new OpenAI accounts are a few images per minute, so honour
+        # Retry-After when given and back off exponentially otherwise.
+        retry_after = float(resp.headers.get("retry-after", 0) or 0)
+        await asyncio.sleep(max(retry_after, 2**attempt) + random.random())
     raise AssertionError("unreachable")
 
 
