@@ -179,6 +179,7 @@ stateDiagram-v2
     pending_payment --> expired : hold passes expires_at
     expired --> paid : late payment, re-reserve succeeds
     expired --> refund_pending : late payment, out of stock
+    cancelled --> refund_pending : payment arrives after cancel
     paid --> fulfilled
     paid --> refund_pending : admin refund
     refund_pending --> refunded : Paystack confirms refund
@@ -187,7 +188,7 @@ stateDiagram-v2
     cancelled --> [*]
 ```
 
-All moves go through `orders.transition(order, to_state)`, which locks the order row (`SELECT ... FOR UPDATE`) and raises an error on any move not shown here. The webhook, the callback check and the expiry job all use it, so they can never race each other into an invalid state.
+All moves go through `orders.state.transition(order, to_state)` on an order locked with `lock_order()` (`SELECT ... FOR UPDATE`); any move not shown here raises `InvalidTransition`. The webhook, the callback check and the expiry job all use it, so they can never race each other into an invalid state.
 
 ## 4. Checkout sequence: checkout → Paystack → webhook → paid
 
