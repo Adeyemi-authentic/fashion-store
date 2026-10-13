@@ -64,10 +64,12 @@ async def paystack_webhook(
         result = "ignored"
     else:
         result = await orders.apply_successful_charge(session, Charge.from_data(data))
+    reference = data.get("reference")
+    order_id = await orders.order_id_for_reference(session, str(reference)) if reference else None
     await session.execute(
         update(PaymentEvent)
         .where(PaymentEvent.paystack_event_id == event_id)
-        .values(processed_at=func.now())
+        .values(processed_at=func.now(), order_id=order_id)  # audit trail per order
     )
     await session.commit()
     log.info("paystack %s %s -> %s", event, data.get("reference"), result)

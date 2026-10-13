@@ -20,6 +20,7 @@ from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 __all__ = [
     "ORDER_STATUSES",
+    "order_id_for_reference",
     "Outcome",
     "apply_successful_charge",
     "expire_overdue_orders",
@@ -97,3 +98,7 @@ async def list_orders(
         else None
     )
     return result, next_cursor
+
+
+async def order_id_for_reference(session: AsyncSession, reference: str) -> uuid.UUID | None:
+    return await session.scalar(select(Order.id).where(Order.paystack_reference == reference))

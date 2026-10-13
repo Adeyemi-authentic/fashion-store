@@ -111,7 +111,12 @@ async def test_forged_signature_is_401_and_changes_nothing(
     )
     assert missing.status_code == 401
     assert (await status(session, out["order_id"])).status == "pending_payment"
-    assert await session.scalar(select(func.count()).select_from(PaymentEvent)) == 0
+    stored = (
+        select(func.count())
+        .select_from(PaymentEvent)
+        .where(PaymentEvent.payload["data"]["reference"].astext == out["reference"])
+    )
+    assert await session.scalar(stored) == 0
 
 
 # --- paid in time --------------------------------------------------------------------------
@@ -126,6 +131,16 @@ async def test_charge_success_pays_the_order_once(
 
     first = await send(client, payload)
     assert first.status_code == 200 and first.json()["result"] == "paid"
+    event = await session.scalar(
+        select(PaymentEvent).where(
+            PaymentEvent.paystack_event_id == f"charge.success:{payload['data']['id']}"
+        )
+    )
+    assert (
+        event is not None
+        and str(event.order_id) == out["order_id"]
+        and event.processed_at is not None
+    )
     assert (await status(session, out["order_id"])).status == "paid"
     assert await stock(session, a) == (3, 0)  # 5 on hand, 2 sold, hold gone
     assert await stock(session, b) == (4, 0)

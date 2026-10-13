@@ -148,6 +148,7 @@ async def stocked(session: AsyncSession):  # type: ignore[no-untyped-def]
     from app.modules.catalog.models import Product, Variant
     from app.modules.orders import inventory
     from app.modules.orders.models import IdempotencyKey, Order, OrderItem
+    from app.modules.payments.models import PaymentEvent
     from app.platform.models import OutboxJob
 
     variants = list(
@@ -173,6 +174,7 @@ async def stocked(session: AsyncSession):  # type: ignore[no-untyped-def]
     orders = select(OrderItem.order_id).where(OrderItem.variant_id.in_(saved))
     await session.execute(delete(IdempotencyKey).where(IdempotencyKey.order_id.in_(orders)))
     await session.execute(delete(OutboxJob))
+    await session.execute(delete(PaymentEvent))
     await session.execute(delete(Order).where(Order.id.in_(orders)))
     for vid, (on_hand, reserved) in saved.items():
         await session.execute(
