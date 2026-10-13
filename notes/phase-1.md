@@ -1,6 +1,6 @@
 # Phase 1: Data model, catalog seed, API skeleton
 
-**Status:** built and tested locally (33 tests pass). Not yet run against Neon, because `DATABASE_URL` / `DATABASE_URL_DIRECT` in `.env` are still placeholders.
+**Status:** done. 33 tests pass locally. The schema is migrated and the catalog seeded on Neon (Postgres 18, us-east-2): 131 active and 19 draft products, 1,212 variants, 131 images.
 
 ## What was built
 - **API project** (`api/`): Python 3.12 via `uv`, FastAPI, async SQLAlchemy 2 + psycopg 3, Alembic, pydantic-settings, ruff, import-linter.
@@ -37,14 +37,20 @@
 - Renamed one print name: "Makoko" is a Lagos informal settlement, not something to name a dress after.
 - Postgres version: tests run on 16, Neon defaults to 17. Nothing here depends on the difference.
 
-## Your to-do
+## Neon findings (2026-10-13)
+- **Row-by-row seeding took 6.5 minutes** (about 1,500 statements × about 250 ms Lagos→Ohio round trip), and a second run hit a network timeout partway. It rolled back cleanly, because the seed commits once at the end. **Fixed by batching:** 3 multi-row upserts, about 8 s.
+- **Local API → Neon latency:** `/health` ≈ 0.7 s, `/products` ≈ 1.25 s, product detail ≈ 1.25 s. Almost all of that is the round trip from here to Ohio, which every query pays (pool pre-ping, query, image load, rollback ≈ 4–5 round trips). With the API on Render in the same region as Neon (Ohio), each round trip is about 1–2 ms. **Phase 9: deploy the API to Render's Ohio region.** Phase 5/8: consider dropping `pool_pre_ping` (it costs one round trip per request) in favour of `pool_recycle`, and measure the effect.
+- The config now accepts the plain `postgresql://` URLs Neon and Render hand out, and converts them to psycopg 3.
+- Neon's sample table `playing_with_neon` was left untouched.
+
+## Your to-do (done)
 1. **Fill in the Neon URLs** in `.env` (pooled → `DATABASE_URL`, direct → `DATABASE_URL_DIRECT`, scheme `postgresql+psycopg://`). Then I'll run `alembic upgrade head` and the seed against Neon and check the endpoints with real latency.
 2. ~~Pick an image provider~~ Done: OpenAI, 131 images kept.
 
 ## Done when
 - [x] pytest covers the catalog endpoints (pagination for every sort, filters, bad cursors, 404s, hidden drafts).
 - [x] Seeding can be re-run with no duplicates, and doesn't overwrite stock (tested).
-- [ ] Migrations + seed run against Neon (blocked on the URLs).
+- [x] Migrations + seed run against Neon. Re-seeding twice gave identical counts and no stock rows over-reserved.
 
 ## 3 interview questions this phase lets me answer
 1. **"Why cursor pagination over OFFSET, and what's the subtle bug people hit?"** OFFSET scans and throws away rows, and items shift when data changes. Keyset uses the index. The subtle bug is forgetting a unique tie-breaker (`id`): with duplicate prices, items get skipped or repeated at page boundaries.

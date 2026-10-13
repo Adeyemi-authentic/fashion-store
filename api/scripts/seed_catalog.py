@@ -30,61 +30,74 @@ class SeedResult:
 
 
 async def seed(session: AsyncSession) -> SeedResult:
+    """Three multi-row upserts (products, variants, images) in one transaction.
+
+    Batched because every statement is a network round trip: row-by-row took 6+ minutes
+    from Lagos to a us-east-2 Neon database; batched it is a few seconds.
+    """
     catalog = build_catalog()
-    active = 0
-    for p in catalog:
-        with_image = has_image(p)
-        active += with_image
-        stmt = insert(Product).values(
-            slug=p.slug,
-            name=p.name,
-            category=p.category,
-            description=p.description,
-            base_price_kobo=p.base_price_kobo,
-            attributes=p.attributes,
-            status="active" if with_image else "draft",
-            created_at=p.created_at,
-        )
-        stmt = stmt.on_conflict_do_update(
-            index_elements=[Product.slug],
+    with_image = {p.slug for p in catalog if has_image(p)}
+
+    pstmt = insert(Product).values(
+        [
+            {
+                "slug": p.slug,
+                "name": p.name,
+                "category": p.category,
+                "description": p.description,
+                "base_price_kobo": p.base_price_kobo,
+                "attributes": p.attributes,
+                "status": "active" if p.slug in with_image else "draft",
+                "created_at": p.created_at,
+            }
+            for p in catalog
+        ]
+    )
+    pstmt = pstmt.on_conflict_do_update(
+        index_elements=[Product.slug],
+        set_={
+            "name": pstmt.excluded.name,
+            "category": pstmt.excluded.category,
+            "description": pstmt.excluded.description,
+            "base_price_kobo": pstmt.excluded.base_price_kobo,
+            "attributes": pstmt.excluded.attributes,
+            "status": case((Product.status == "archived", "archived"), else_=pstmt.excluded.status),
+        },
+    ).returning(Product.slug, Product.id)
+    ids = dict((await session.execute(pstmt)).all())
+
+    vstmt = insert(Variant).values(
+        [
+            {
+                "product_id": ids[p.slug],
+                "sku": v.sku,
+                "size": v.size,
+                "colour": v.colour,
+                "price_kobo": v.price_kobo,
+                "stock_on_hand": v.stock_on_hand,
+            }
+            for p in catalog
+            for v in p.variants
+        ]
+    )
+    await session.execute(
+        vstmt.on_conflict_do_update(
+            index_elements=[Variant.sku],
             set_={
-                "name": stmt.excluded.name,
-                "category": stmt.excluded.category,
-                "description": stmt.excluded.description,
-                "base_price_kobo": stmt.excluded.base_price_kobo,
-                "attributes": stmt.excluded.attributes,
-                "status": case(
-                    (Product.status == "archived", "archived"), else_=stmt.excluded.status
-                ),
+                "size": vstmt.excluded.size,
+                "colour": vstmt.excluded.colour,
+                "price_kobo": vstmt.excluded.price_kobo,
             },
-        ).returning(Product.id)
-        product_id = (await session.execute(stmt)).scalar_one()
-
-        for v in p.variants:
-            vstmt = insert(Variant).values(
-                product_id=product_id,
-                sku=v.sku,
-                size=v.size,
-                colour=v.colour,
-                price_kobo=v.price_kobo,
-                stock_on_hand=v.stock_on_hand,
-            )
-            await session.execute(
-                vstmt.on_conflict_do_update(
-                    index_elements=[Variant.sku],
-                    set_={
-                        "size": vstmt.excluded.size,
-                        "colour": vstmt.excluded.colour,
-                        "price_kobo": vstmt.excluded.price_kobo,
-                    },
-                )
-            )
-
-        if not with_image:
-            continue
-        istmt = insert(ProductImage).values(
-            product_id=product_id, url=p.image_url, alt=p.image_alt, position=0
         )
+    )
+
+    images = [
+        {"product_id": ids[p.slug], "url": p.image_url, "alt": p.image_alt, "position": 0}
+        for p in catalog
+        if p.slug in with_image
+    ]
+    if images:
+        istmt = insert(ProductImage).values(images)
         await session.execute(
             istmt.on_conflict_do_update(
                 constraint="uq_product_images_product_position",
@@ -92,7 +105,7 @@ async def seed(session: AsyncSession) -> SeedResult:
             )
         )
     await session.commit()
-    return SeedResult(total=len(catalog), active=active)
+    return SeedResult(total=len(catalog), active=len(with_image))
 
 
 async def main() -> None:

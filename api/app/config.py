@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +21,15 @@ class Settings(BaseSettings):
 
     hold_minutes: int = 15
     log_level: str = "INFO"
+
+    @field_validator("database_url", "database_url_direct")
+    @classmethod
+    def use_psycopg3(cls, url: str | None) -> str | None:
+        """Neon and Render hand out plain postgresql:// URLs; SQLAlchemy would read that as
+        psycopg2. Point them at psycopg 3, which is the driver installed."""
+        if url and url.startswith(("postgresql://", "postgres://")):
+            return "postgresql+psycopg://" + url.split("://", 1)[1]
+        return url
 
     @property
     def migrations_database_url(self) -> str:
