@@ -1,6 +1,6 @@
 # Phase 2: Storefront
 
-**Status:** built, waiting for review. Safari check: see "Done when" below.
+**Status:** built and verified (Chrome + real Safari), waiting for review.
 
 ## What was built
 - **Cart API** (`api/app/modules/cart/`): `GET /cart`, `POST /cart/items`, `PATCH`/`DELETE /cart/items/{variant_id}`. A guest cart is found by a random token in an `HttpOnly; SameSite=Lax` cookie (`Secure` when the site is https). Only a sha256 of the token is stored.
@@ -59,7 +59,7 @@ Server response time: prerendered pages 3–8 ms. A filtered listing is about 1.
 ## Done when
 - [x] Home, category listing with filters, product page (variant picker, stock shown), cart drawer, mobile-first.
 - [x] Server-side cart API using a session cookie, called through the `/api/*` rewrite (ADR-005). Verified in Chrome.
-- [ ] Verified in Safari: `npm run e2e:safari`. Needs `safaridriver --enable` once.
+- [x] Verified in real Safari 17.3 (`npm run e2e:safari`): add to bag, `cart_token` kept as a first-party HttpOnly cookie on the storefront origin, cart survives a reload, remove. Passed twice in a row. (Needs `safaridriver --enable` once per machine.)
 - [x] Next.js caching for product pages, image optimisation (AVIF/WebP, responsive sizes).
 - [x] Lighthouse 90+ on mobile (91–94), and the full browse-to-cart flow works at phone width (Playwright, Pixel 7).
 

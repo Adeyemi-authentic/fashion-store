@@ -47,7 +47,13 @@ try {
 
   // Clean up.
   await driver.findElement(By.css("button[aria-label^='Open bag']")).click();
-  await driver.wait(until.elementLocated(By.xpath("//dialog[@open]//button[normalize-space()='Remove']")), 15000).click();
+  const remove = await driver.wait(
+    until.elementLocated(By.xpath("//dialog[@open]//button[normalize-space()='Remove']")),
+    15000,
+  );
+  await driver.wait(until.elementIsVisible(remove), 5000);
+  await driver.sleep(400); // Safari's WebDriver won't click while the drawer is still sliding in
+  await remove.click();
   await driver.wait(until.elementLocated(By.xpath("//dialog[@open]//p[normalize-space()='Your bag is empty.']")), 15000);
   console.log("✓ removed; bag empty");
   console.log(`Safari: browse-to-cart OK (${slug})`);
