@@ -15,11 +15,20 @@ from app.modules.orders.inventory import (
     adjust_stock,
 )
 from app.modules.orders.models import ORDER_STATUSES, Order, OrderItem
-from app.modules.orders.payment import Outcome, apply_successful_charge, expire_overdue_orders
+from app.modules.orders.payment import (
+    Outcome,
+    apply_successful_charge,
+    cancel_order,
+    expire_overdue_orders,
+)
+from app.modules.orders.state import InvalidTransition, OrderNotFound
 from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 __all__ = [
     "ORDER_STATUSES",
+    "InvalidTransition",
+    "OrderNotFound",
+    "cancel_order",
     "order_id_for_reference",
     "Outcome",
     "apply_successful_charge",

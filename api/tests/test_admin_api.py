@@ -25,7 +25,7 @@ ADMIN_ROUTES = sorted(
 
 
 def test_admin_routes_were_found() -> None:
-    assert len(ADMIN_ROUTES) >= 9  # guards the parametrised test below against finding none
+    assert len(ADMIN_ROUTES) >= 10  # guards the parametrised test below against finding none
 
 
 def _fill(path: str) -> str:
@@ -266,3 +266,23 @@ async def test_orders_list_filters_by_status(
     finally:
         await session.execute(delete(Order).where(Order.id.in_([o.id for o in orders])))
         await session.commit()
+
+
+async def test_cancel_releases_the_hold_and_only_unpaid_orders(
+    admin: AsyncClient, client: AsyncClient, session: AsyncSession, stocked: list[Variant], paystack
+) -> None:  # type: ignore[no-untyped-def]
+    a, _ = stocked
+    await client.post("/cart/items", json={"variant_id": str(a.id), "qty": 2})
+    out = (
+        await client.post(
+            "/checkout",
+            json={"email": "c@example.com"},
+            headers={"Idempotency-Key": f"k-{uuid.uuid4()}"},
+        )
+    ).json()
+    assert (await admin.post(f"/admin/orders/{out['order_id']}/cancel")).status_code == 204
+    session.expire_all()
+    assert await session.scalar(select(Variant.stock_reserved).where(Variant.id == a.id)) == 0
+    again = await admin.post(f"/admin/orders/{out['order_id']}/cancel")
+    assert again.status_code == 409 and "cancelled" in again.json()["detail"]
+    assert (await admin.post(f"/admin/orders/{uuid.uuid4()}/cancel")).status_code == 404

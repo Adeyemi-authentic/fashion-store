@@ -136,3 +136,12 @@ async def expire_overdue_orders(session: AsyncSession, limit: int = 100) -> int:
         await transition(session, order, "expired")
     await session.commit()
     return len(ids)
+
+
+async def cancel_order(session: AsyncSession, order_id: uuid.UUID) -> None:
+    """Cancel an unpaid order and give its held stock back now. Raises InvalidTransition if
+    it isn't pending_payment. If the customer pays anyway, apply_successful_charge refunds
+    them (cancelled -> refund_pending). Doesn't commit."""
+    order = await lock_order(session, order_id)
+    await transition(session, order, "cancelled")  # checks the move first
+    await inventory.release_order_holds(session, order.id)

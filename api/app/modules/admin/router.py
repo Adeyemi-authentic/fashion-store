@@ -192,3 +192,18 @@ async def list_orders(
         ],
         next_cursor=next_cursor,
     )
+
+
+@router.post("/orders/{order_id}/cancel", status_code=204)
+async def cancel_order(order_id: UUID, session: Session, admin: Admin) -> None:
+    try:
+        await orders.cancel_order(session, order_id)
+    except orders.OrderNotFound as exc:
+        raise HTTPException(status_code=404, detail="order not found") from exc
+    except orders.InvalidTransition as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only unpaid orders can be cancelled (this one is {exc.current})",
+        ) from exc
+    await session.commit()
+    log.info("admin %s cancelled order %s", admin.email, order_id)
