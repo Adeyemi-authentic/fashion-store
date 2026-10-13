@@ -101,6 +101,10 @@ class ImageError(Exception):
     pass
 
 
+class OutOfCredits(ImageError):
+    """Billing problem: retrying cannot help, so the whole run stops."""
+
+
 async def generate(client: httpx.AsyncClient, settings: ImageSettings, prompt: str) -> bytes:
     """One image as WebP bytes. Retries rate limits and server errors with backoff."""
     body = {
@@ -116,12 +120,16 @@ async def generate(client: httpx.AsyncClient, settings: ImageSettings, prompt: s
         resp = await client.post(OPENAI_IMAGES_URL, json=body)
         if resp.status_code == 200:
             return base64.b64decode(resp.json()["data"][0]["b64_json"])
+        try:
+            error = resp.json()["error"]
+            message, code = error.get("message", ""), error.get("code")
+        except (ValueError, KeyError, TypeError, AttributeError):
+            message, code = resp.text[:300], None
+        # OpenAI returns 429 for an empty balance too, but that is not a rate limit.
+        if code == "insufficient_quota" or "no credits" in message.lower():
+            raise OutOfCredits(message)
         retryable = resp.status_code == 429 or resp.status_code >= 500
         if not retryable or attempt == MAX_ATTEMPTS:
-            try:
-                message = resp.json()["error"]["message"]
-            except (ValueError, KeyError, TypeError):
-                message = resp.text[:300]
             raise ImageError(f"HTTP {resp.status_code}: {message}")
         # Image rate limits on new OpenAI accounts are a few images per minute, so honour
         # Retry-After when given and back off exponentially otherwise.
@@ -149,6 +157,7 @@ async def run(products: list[SeedProduct], settings: ImageSettings, force: bool)
         f"with {settings.image_gen_model}, {SIZE}, {QUALITY}"
     )
     sem = asyncio.Semaphore(CONCURRENCY)
+    out_of_credits = asyncio.Event()
     failures = 0
     headers = {"Authorization": f"Bearer {settings.image_gen_api_key}"}
 
@@ -157,11 +166,20 @@ async def run(products: list[SeedProduct], settings: ImageSettings, force: bool)
         async def one(p: SeedProduct) -> None:
             nonlocal failures
             async with sem:
+                if out_of_credits.is_set():
+                    failures += 1
+                    return
                 try:
                     data = await generate(client, settings, build_prompt(p))
+                except OutOfCredits as exc:
+                    failures += 1
+                    if not out_of_credits.is_set():
+                        out_of_credits.set()
+                        print(f"  STOPPING: out of OpenAI credits ({exc})")
+                    return
                 except (ImageError, httpx.HTTPError) as exc:
                     failures += 1
-                    print(f"  FAILED {p.slug}: {exc}")
+                    print(f"  FAILED {p.slug}: {type(exc).__name__}: {exc}")
                     return
                 path = image_path(p)
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -182,6 +200,8 @@ def write_prompts(catalog: list[SeedProduct]) -> None:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]  # live progress in logs
+
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--sample", action="store_true", help="generate 3 style samples")
