@@ -89,3 +89,38 @@ async def client(seeded: int) -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=create_app())
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
+
+
+async def sign_up(client: AsyncClient, role: str = "customer") -> str:
+    """Sign a new account in on `client` (it keeps the session cookie). Returns the email."""
+    import uuid
+
+    from app.db import get_sessionmaker
+    from app.modules.accounts.service import set_role
+
+    email = f"user-{uuid.uuid4().hex[:10]}@example.com"
+    resp = await client.post("/auth/signup", json={"email": email, "password": "correct horse"})
+    assert resp.status_code == 201, resp.text
+    if role != "customer":
+        async with get_sessionmaker()() as s:
+            await set_role(s, email, role)
+            await s.commit()
+    return email
+
+
+@pytest.fixture
+async def make_client(seeded: int) -> AsyncIterator:  # type: ignore[type-arg]
+    """Extra independent clients (separate cookie jars), e.g. an admin and a customer."""
+    from app.main import create_app
+
+    app = create_app()
+    clients: list[AsyncClient] = []
+
+    def _make() -> AsyncClient:
+        c = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+        clients.append(c)
+        return c
+
+    yield _make
+    for c in clients:
+        await c.aclose()

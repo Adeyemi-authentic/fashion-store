@@ -5,6 +5,8 @@ description = "FlyFit API: FastAPI app split into modules, plus the outbox worke
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.0",
+    "argon2-cffi>=25.1.0",
+    "email-validator>=2.3.0",
     "fastapi>=0.143.0",
     "pgvector>=0.5.1",
     "psycopg[binary]>=3.2",
@@ -71,6 +73,20 @@ forbidden_modules = [
     "app.modules.orders.inventory",
     "app.modules.orders.models",
     "app.modules.accounts.models",
+    "app.modules.payments.models",
+    "app.modules.assistant.models",
+]
+
+[[tool.importlinter.contracts]]
+name = "Accounts and admin use other modules only through their service"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["app.modules.accounts", "app.modules.admin"]
+forbidden_modules = [
+    "app.modules.catalog.models",
+    "app.modules.cart.models",
+    "app.modules.orders.inventory",
+    "app.modules.orders.models",
     "app.modules.payments.models",
     "app.modules.assistant.models",
 ]

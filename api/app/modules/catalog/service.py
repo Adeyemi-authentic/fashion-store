@@ -1,22 +1,32 @@
 """Catalog reads. Public interface of the catalog module (ADR-001)."""
 
+import re
+import secrets
+import unicodedata
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Select, and_, exists, func, or_, select
+from sqlalchemy import Select, and_, delete, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.catalog.models import Product, ProductImage, Variant
 from app.modules.catalog.schemas import (
+    AdminProductOut,
+    AdminProductPage,
+    AdminProductRow,
+    AdminVariantOut,
     CategoryOut,
     FacetsOut,
     ImageOut,
     ProductCard,
+    ProductCreateIn,
     ProductDetail,
     ProductPage,
     ProductSort,
+    ProductUpdateIn,
+    VariantIn,
     VariantOut,
 )
 from app.modules.orders.service import available_qty
@@ -271,3 +281,297 @@ async def get_variant_summaries(
         )
         for v, p, available in rows
     }
+
+
+# ---------------------------------------------------------------------------------------------
+# Admin writes. These flush but never commit: the admin router commits once, so a product and
+# its starting stock (written by orders.inventory) land together or not at all.
+
+
+class ProductNotFound(LookupError):
+    pass
+
+
+class CannotPublish(ValueError):
+    pass
+
+
+class DuplicateVariant(ValueError):
+    pass
+
+
+def _slugify(text: str) -> str:
+    ascii_text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")
+
+
+def _sku_part(text: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "", text.upper())[:12] or "X"
+
+
+async def _unique_slug(session: AsyncSession, base: str) -> str:
+    taken = set(
+        (
+            await session.execute(
+                select(Product.slug).where(
+                    or_(Product.slug == base, Product.slug.like(f"{base}-%"))
+                )
+            )
+        ).scalars()
+    )
+    if base not in taken:
+        return base
+    n = 2
+    while f"{base}-{n}" in taken:
+        n += 1
+    return f"{base}-{n}"
+
+
+def _new_variant(product_id: uuid.UUID, v: VariantIn) -> Variant:
+    sku = f"FF-{secrets.token_hex(3).upper()}-{_sku_part(v.colour)}-{_sku_part(v.size)}"
+    return Variant(
+        product_id=product_id, sku=sku, size=v.size, colour=v.colour, price_kobo=v.price_kobo
+    )
+
+
+async def _sync_base_price(session: AsyncSession, product_id: uuid.UUID) -> None:
+    """base_price_kobo is the 'from' price on listings: always the lowest variant price."""
+    await session.execute(
+        update(Product)
+        .where(Product.id == product_id)
+        .values(
+            base_price_kobo=select(func.min(Variant.price_kobo))
+            .where(Variant.product_id == product_id)
+            .scalar_subquery()
+        )
+    )
+
+
+async def _check_publishable(session: AsyncSession, product_id: uuid.UUID) -> None:
+    has_variant = await session.scalar(select(exists().where(Variant.product_id == product_id)))
+    has_image = await session.scalar(select(exists().where(ProductImage.product_id == product_id)))
+    if not has_variant:
+        raise CannotPublish("Add at least one variant before publishing")
+    if not has_image:
+        raise CannotPublish("Add an image before publishing")
+
+
+async def _set_image(session: AsyncSession, product: Product, url: str) -> None:
+    await session.execute(delete(ProductImage).where(ProductImage.product_id == product.id))
+    session.add(
+        ProductImage(
+            product_id=product.id, url=url, alt=f"{product.name} (AI-generated image)", position=0
+        )
+    )
+
+
+async def create_product(
+    session: AsyncSession, data: ProductCreateIn
+) -> tuple[uuid.UUID, list[tuple[uuid.UUID, int]]]:
+    """Returns the product id and (variant id, starting stock) pairs. The caller sets the
+    stock through orders.inventory, which is the only code allowed to write stock columns."""
+    keys = {(v.size.lower(), v.colour.lower()) for v in data.variants}
+    if len(keys) != len(data.variants):
+        raise DuplicateVariant("Two variants have the same size and colour")
+    product = Product(
+        slug=await _unique_slug(session, _slugify(f"{data.category} {data.name}")),
+        name=data.name,
+        description=data.description,
+        category=data.category,
+        status="draft",
+        attributes=data.attributes,
+        base_price_kobo=min(v.price_kobo for v in data.variants),
+    )
+    session.add(product)
+    await session.flush()
+    variants = [_new_variant(product.id, v) for v in data.variants]
+    session.add_all(variants)
+    if data.image_url:
+        await _set_image(session, product, data.image_url)
+    await session.flush()
+    if data.status == "active":
+        await _check_publishable(session, product.id)
+        product.status = "active"
+    return product.id, [
+        (v.id, d.stock_on_hand) for v, d in zip(variants, data.variants, strict=True)
+    ]
+
+
+async def update_product(
+    session: AsyncSession, product_id: uuid.UUID, data: ProductUpdateIn
+) -> str:
+    """Returns the slug (so the storefront can refresh that page's cache)."""
+    product = await session.get(Product, product_id, with_for_update=True)
+    if product is None:
+        raise ProductNotFound(product_id)
+    changes = data.model_dump(exclude_unset=True, exclude={"image_url", "status"})
+    for field, value in changes.items():
+        setattr(product, field, value)
+    if data.image_url is not None:
+        await _set_image(session, product, data.image_url)
+        await session.flush()
+    if data.status is not None and data.status != product.status:
+        if data.status == "active":
+            await _check_publishable(session, product.id)
+        # archived = soft delete. Orders keep pointing at its variants, so rows never go away.
+        product.status = data.status
+    product.updated_at = func.now()  # type: ignore[assignment]
+    await session.flush()
+    return product.slug
+
+
+async def add_variant(
+    session: AsyncSession, product_id: uuid.UUID, data: VariantIn
+) -> tuple[uuid.UUID, str]:
+    slug = await session.scalar(select(Product.slug).where(Product.id == product_id))
+    if slug is None:
+        raise ProductNotFound(product_id)
+    clash = await session.scalar(
+        select(
+            exists().where(
+                Variant.product_id == product_id,
+                func.lower(Variant.size) == data.size.lower(),
+                func.lower(Variant.colour) == data.colour.lower(),
+            )
+        )
+    )
+    if clash:
+        raise DuplicateVariant("This product already has that size and colour")
+    variant = _new_variant(product_id, data)
+    session.add(variant)
+    await session.flush()
+    await _sync_base_price(session, product_id)
+    return variant.id, slug
+
+
+async def set_variant_price(session: AsyncSession, variant_id: uuid.UUID, price_kobo: int) -> str:
+    """Changes the price for future carts and orders. Orders already placed keep the price
+    they copied at checkout (ADR-004), so this never changes what someone was charged."""
+    row = (
+        await session.execute(
+            update(Variant)
+            .where(Variant.id == variant_id)
+            .values(price_kobo=price_kobo, updated_at=func.now())
+            .returning(Variant.product_id)
+        )
+    ).one_or_none()
+    if row is None:
+        raise ProductNotFound(variant_id)
+    await _sync_base_price(session, row.product_id)
+    return await session.scalar(select(Product.slug).where(Product.id == row.product_id)) or ""
+
+
+async def product_id_for_variant(session: AsyncSession, variant_id: uuid.UUID) -> uuid.UUID:
+    product_id = await session.scalar(select(Variant.product_id).where(Variant.id == variant_id))
+    if product_id is None:
+        raise ProductNotFound(variant_id)
+    return product_id
+
+
+async def admin_get_product(session: AsyncSession, product_id: uuid.UUID) -> AdminProductOut | None:
+    product = (
+        await session.execute(
+            select(Product).where(Product.id == product_id).options(selectinload(Product.images))
+        )
+    ).scalar_one_or_none()
+    if product is None:
+        return None
+    rows = (
+        await session.execute(
+            select(Variant, available_qty().label("available"))
+            .where(Variant.product_id == product_id)
+            .order_by(Variant.colour, Variant.price_kobo, Variant.sku)
+        )
+    ).all()
+    return AdminProductOut(
+        id=product.id,
+        slug=product.slug,
+        name=product.name,
+        description=product.description,
+        category=product.category,
+        status=product.status,  # type: ignore[arg-type]
+        price_kobo=product.base_price_kobo,
+        attributes=product.attributes,
+        image=_first_image(product.images),
+        variants=[
+            AdminVariantOut(
+                id=v.id,
+                sku=v.sku,
+                size=v.size,
+                colour=v.colour,
+                price_kobo=v.price_kobo,
+                stock_on_hand=v.stock_on_hand,
+                stock_reserved=v.stock_reserved,
+                available=max(0, available),
+            )
+            for v, available in rows
+        ],
+        created_at=product.created_at,
+        updated_at=product.updated_at,
+    )
+
+
+ADMIN_SORT = "admin_name"
+
+
+async def admin_list_products(
+    session: AsyncSession,
+    q: str | None = None,
+    status: str | None = None,
+    category: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+) -> AdminProductPage:
+    """Every product whatever its status, by name, keyset-paginated like the storefront."""
+    stats = (
+        select(
+            Variant.product_id,
+            func.count().label("variant_count"),
+            func.coalesce(func.sum(func.greatest(available_qty(), 0)), 0).label("available"),
+        )
+        .group_by(Variant.product_id)
+        .subquery()
+    )
+    stmt = (
+        select(Product, stats.c.variant_count, stats.c.available)
+        .outerjoin(stats, stats.c.product_id == Product.id)
+        .options(selectinload(Product.images))
+    )
+    if q:
+        stmt = stmt.where(Product.name.ilike(f"%{q}%"))
+    if status:
+        stmt = stmt.where(Product.status == status)
+    if category:
+        stmt = stmt.where(Product.category == category)
+    if cursor:
+        value, raw_id = decode_cursor(cursor, ADMIN_SORT)
+        try:
+            last_id = uuid.UUID(raw_id)
+        except (TypeError, ValueError) as exc:
+            raise InvalidCursor("cursor is not valid") from exc
+        if not isinstance(value, str):
+            raise InvalidCursor("cursor is not valid")
+        stmt = stmt.where(
+            or_(Product.name > value, and_(Product.name == value, Product.id > last_id))
+        )
+    rows = (await session.execute(stmt.order_by(Product.name, Product.id).limit(limit + 1))).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    items = [
+        AdminProductRow(
+            id=p.id,
+            slug=p.slug,
+            name=p.name,
+            category=p.category,
+            status=p.status,  # type: ignore[arg-type]
+            price_kobo=p.base_price_kobo,
+            variant_count=count or 0,
+            available=int(avail or 0),
+            image=_first_image(p.images),
+        )
+        for p, count, avail in rows
+    ]
+    next_cursor = (
+        encode_cursor(ADMIN_SORT, rows[-1][0].name, str(rows[-1][0].id)) if has_more else None
+    )
+    return AdminProductPage(items=items, next_cursor=next_cursor)
