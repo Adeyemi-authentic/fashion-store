@@ -136,13 +136,14 @@ async def adjust_stock(
     except orders.VariantNotFound as exc:
         raise HTTPException(status_code=404, detail="variant not found") from exc
     except orders.StockBelowReserved as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=(
+        if exc.reserved:
+            message = (
                 f"Can't go below {exc.reserved}: that many are held for unpaid orders "
                 f"(on hand now: {exc.on_hand})"
-            ),
-        ) from exc
+            )
+        else:
+            message = f"Can't remove more than the {exc.on_hand} on hand"
+        raise HTTPException(status_code=409, detail=message) from exc
     await session.commit()
     log.info(
         "admin %s stock %+d on %s (%s) -> %d",

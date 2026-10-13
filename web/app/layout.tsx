@@ -50,7 +50,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/" className="font-display text-2xl tracking-tight">
                 {BRAND}
               </Link>
-              <CartButton />
+              <div className="flex items-center">
+                <Link
+                  href="/account"
+                  aria-label="Your account"
+                  className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand"
+                >
+                  <svg aria-hidden width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+                  </svg>
+                </Link>
+                <CartButton />
+              </div>
             </div>
             <nav aria-label="Categories" className="mx-auto max-w-6xl">
               <div className="no-scrollbar flex gap-1 overflow-x-auto px-2 pb-2">

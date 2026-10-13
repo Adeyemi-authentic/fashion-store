@@ -7,12 +7,17 @@ cd api
 uv sync                                   # install
 uv run alembic upgrade head               # create/upgrade tables (uses DATABASE_URL_DIRECT from ../.env)
 uv run python -m scripts.seed_catalog     # seed ~150 products; safe to re-run
-uv run uvicorn app.main:app --reload      # http://localhost:8000/docs
+uv run uvicorn app.main:app --reload --timeout-keep-alive 75   # http://localhost:8000/docs
 
 uv run pytest                             # tests (starts a throwaway local Postgres, no Docker)
 uv run ruff check . && uv run ruff format --check .
 uv run lint-imports                       # module boundaries (ADR-001)
 ```
+
+Run uvicorn with `--timeout-keep-alive 75` (here and in production). Its default is 5 s. The
+Next.js `/api` proxy reuses idle connections, and if uvicorn closes one just as the proxy sends on
+it, the browser gets a 500 "socket hang up" (ECONNRESET). The server's keep-alive must outlast the
+proxy's.
 
 ## Layout
 
