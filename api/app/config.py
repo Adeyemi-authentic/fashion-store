@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     database_url_direct: str | None = None  # migrations; falls back to database_url
 
     hold_minutes: int = 15
+    paystack_secret_key: str = ""  # sk_test_...; also the webhook signing key
     log_level: str = "INFO"
 
     @field_validator("database_url", "database_url_direct")
