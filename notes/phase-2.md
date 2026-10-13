@@ -59,7 +59,7 @@ Server response time: prerendered pages 3–8 ms. A filtered listing is about 1.
 ## Done when
 - [x] Home, category listing with filters, product page (variant picker, stock shown), cart drawer, mobile-first.
 - [x] Server-side cart API using a session cookie, called through the `/api/*` rewrite (ADR-005). Verified in Chrome.
-- [x] Verified in real Safari 17.3 (`npm run e2e:safari`): add to bag, `cart_token` kept as a first-party HttpOnly cookie on the storefront origin, cart survives a reload, remove. Passed twice in a row. (Needs `safaridriver --enable` once per machine.)
+- [x] Verified in real Safari 17.3 (`npm run e2e:safari`): add to bag, `cart_token` kept as a first-party HttpOnly cookie on the storefront origin, cart survives a reload, remove. Passed 4 of 5 runs. One run straight after another failed, and I didn't keep its error; likely Safari's one-automation-session-at-a-time limit, not confirmed. The next 3 back-to-back runs all passed. (Needs `safaridriver --enable` once per machine.)
 - [x] Next.js caching for product pages, image optimisation (AVIF/WebP, responsive sizes).
 - [x] Lighthouse 90+ on mobile (91–94), and the full browse-to-cart flow works at phone width (Playwright, Pixel 7).
 
