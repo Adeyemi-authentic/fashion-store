@@ -25,6 +25,8 @@ Zero rows updated means out of stock, and the whole checkout transaction rolls b
 - Success → `paid` (the customer gets what they paid for).
 - Zero rows → `refund_pending`, a refund outbox job (Paystack refund API), an apology email and an admin alert.
 
+**6. Lock order (added in Phase 4).** Everything that touches stock locks in the same order: **order row → its reservation rows → variant rows (in id order)**. Checkout has no order yet, so it locks its variants (in id order) first. It touches other orders' reservations only with `SKIP LOCKED`, so it never waits on a lock taken in the opposite direction. That's also why checkout only *releases* other orders' expired holds and never marks those orders `expired`: marking an order means locking it, after variants are already locked, which is the reverse of the webhook's order. The webhook instead treats "still `pending_payment`, but my holds ran out" as a late payment.
+
 ## Consequences
 - **Good:** correct under any amount of concurrency without app-level locks, Redis locks or retry loops. Easy to explain and to load-test (Phase 8: 200 buyers, 10 units → exactly 10 paid).
 - **Bad:** a hot item serialises on one row. That's fine at demo scale. At real flash-sale scale, you'd split stock across several "bucket" rows or put a queue in front of checkout.

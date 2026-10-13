@@ -254,6 +254,10 @@ sequenceDiagram
     W->>D: job → done
 ```
 
+**Lock order (no deadlocks):** order row → reservation rows → variant rows in id order. Checkout locks variants first, but touches other orders' reservations only with `SKIP LOCKED` (see ADR-003 §6). A test fails with `DeadlockDetected` if variants are locked in cart order instead.
+
+**Locally** Paystack can't reach a `localhost` webhook, so the callback path (`GET /orders/by-reference/{ref}` → Paystack verify → `apply_successful_charge()`) is what settles test payments. The webhook path is covered by signed-payload tests and is checked live once the API has a public URL (Phase 9).
+
 **Key points:**
 1. **Steps 3–12 are one transaction.** Either the stock is held *and* the order exists, or neither happens.
 2. **The conditional `UPDATE` does all the concurrency work.** Postgres takes a row lock, so 200 buyers racing for 10 units queue up on that row and only 10 `UPDATE`s match. Variants are updated in sorted id order so that two multi-item carts can't deadlock.

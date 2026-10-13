@@ -12,6 +12,7 @@ uv run uvicorn app.main:app --reload --timeout-keep-alive 75   # http://localhos
 uv run pytest                             # tests (starts a throwaway local Postgres, no Docker)
 uv run ruff check . && uv run ruff format --check .
 uv run lint-imports                       # module boundaries (ADR-001)
+uv run python -m scripts.make_admin EMAIL # the only way to grant the admin role
 ```
 
 Run uvicorn with `--timeout-keep-alive 75` (here and in production). Its default is 5 s. The
@@ -44,4 +45,11 @@ tests/
 | POST | `/cart/items` | `{variant_id, qty}`; adds to the line, creates the cart + cookie if needed; 409 if more than available |
 | PATCH | `/cart/items/{variant_id}` | `{qty}`; 0 removes; raising above available is 409, lowering always works |
 | DELETE | `/cart/items/{variant_id}` | remove a line |
+| POST | `/auth/signup`, `/auth/login`, `/auth/logout` | session cookie; the guest cart is merged at login |
+| GET | `/auth/me` | 401 if not signed in |
+| POST | `/checkout` | needs `Idempotency-Key` header; body `{email}` for guests. 201 `{order_id, reference, authorization_url, total_kobo, expires_at}`; 409 out of stock / still processing (`Retry-After`); 422 same key, different body; 502 Paystack unreachable (nothing held) |
+| GET | `/orders/by-reference/{ref}` | for the callback page; verifies with Paystack if unsettled |
+| GET | `/orders/mine` | signed-in customer's orders |
+| POST | `/payments/webhook` | Paystack only, HMAC-SHA512 signed; 401 only for a bad signature, otherwise 200 |
+| * | `/admin/...` | products, variants, stock deltas, orders, cancel; 401 visitors / 403 customers |
 | GET | `/health` | checks the database |
