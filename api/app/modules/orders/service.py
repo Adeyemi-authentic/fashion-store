@@ -7,12 +7,12 @@ from datetime import datetime
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.orders.availability import available_qty
 from app.modules.orders.inventory import (
     StockBelowReserved,
     StockLevel,
     VariantNotFound,
     adjust_stock,
-    available_qty,
 )
 from app.modules.orders.models import ORDER_STATUSES, Order, OrderItem
 from app.modules.orders.payment import Outcome, apply_successful_charge, expire_overdue_orders

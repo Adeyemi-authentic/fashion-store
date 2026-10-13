@@ -29,7 +29,7 @@ from app.modules.catalog.schemas import (
     VariantIn,
     VariantOut,
 )
-from app.modules.orders.service import available_qty
+from app.modules.orders.availability import available_qty
 from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 MAX_PAGE_SIZE = 60

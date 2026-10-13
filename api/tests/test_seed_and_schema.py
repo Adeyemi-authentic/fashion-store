@@ -168,3 +168,29 @@ def test_app_alone_can_resolve_every_foreign_key() -> None:
         [sys.executable, "-c", code], cwd=API_DIR, env=env, capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr[-2000:]
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        "app.modules.accounts.service",
+        "app.modules.admin.router",
+        "app.modules.cart.service",
+        "app.modules.catalog.service",
+        "app.modules.orders.service",
+        "app.modules.payments.router",
+        "app.main",
+    ],
+)
+def test_every_module_imports_first_without_a_cycle(module: str) -> None:
+    """Imported first in a fresh interpreter. An import cycle (e.g. catalog -> orders ->
+    cart -> catalog) only breaks for some import orders, so each module gets to go first."""
+    env = {**os.environ, "DATABASE_URL": "postgresql+psycopg://unused@localhost/unused"}
+    result = subprocess.run(
+        [sys.executable, "-c", f"import {module}"],
+        cwd=API_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr[-1500:]
