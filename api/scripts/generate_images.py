@@ -24,10 +24,9 @@ import httpx
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.config import REPO_ROOT
-from scripts.catalog_data import SeedProduct, build_catalog
+from scripts.catalog_data import SeedProduct, build_catalog, image_path
 
 OUT_DIR = Path(__file__).parent / "out"
-WEB_PUBLIC = REPO_ROOT / "web" / "public"
 OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations"
 
 # The shared art direction. Changing this changes every image, so it is versioned with the code.
@@ -91,10 +90,6 @@ def build_prompt(p: SeedProduct) -> str:
             f"'{a['pattern']}' pattern, {wearer}"
         )
     return f"{subject}. {STYLE}"
-
-
-def image_path(p: SeedProduct) -> Path:
-    return WEB_PUBLIC / p.image_url.lstrip("/")
 
 
 class ImageError(Exception):

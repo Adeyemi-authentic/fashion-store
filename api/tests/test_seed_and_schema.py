@@ -117,3 +117,35 @@ def test_migrations_match_models_and_round_trip(make_database) -> None:  # type:
     command.check(cfg)  # raises if models have changes no migration covers
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
+
+
+async def test_products_without_images_are_drafts(session: AsyncSession) -> None:
+    from scripts.catalog_data import has_image
+
+    catalog = build_catalog()
+    statuses = dict((await session.execute(select(Product.slug, Product.status))).all())
+    for p in catalog:
+        assert statuses[p.slug] == ("active" if has_image(p) else "draft"), p.slug
+    images = (
+        await session.execute(
+            select(Product.slug).join(ProductImage, ProductImage.product_id == Product.id)
+        )
+    ).scalars()
+    assert set(images) == {p.slug for p in catalog if has_image(p)}
+
+
+async def test_reseed_keeps_archived_products_archived(session: AsyncSession) -> None:
+    slug = (
+        await session.execute(select(Product.slug).where(Product.status == "active").limit(1))
+    ).scalar_one()
+    await session.execute(update(Product).where(Product.slug == slug).values(status="archived"))
+    await session.commit()
+    try:
+        await seed(session)
+        status = (
+            await session.execute(select(Product.status).where(Product.slug == slug))
+        ).scalar_one()
+        assert status == "archived"
+    finally:
+        await session.execute(update(Product).where(Product.slug == slug).values(status="active"))
+        await session.commit()

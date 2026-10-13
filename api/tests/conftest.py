@@ -64,12 +64,13 @@ def database_url(make_database) -> str:  # type: ignore[no-untyped-def]
 
 @pytest.fixture(scope="session")
 async def seeded(database_url: str) -> AsyncIterator[int]:
+    """Number of active (visible) products after seeding."""
     from app.db import dispose_engine, get_sessionmaker
     from scripts.seed_catalog import seed
 
     async with get_sessionmaker()() as session:
-        count = await seed(session)
-    yield count
+        result = await seed(session)
+    yield result.active
     await dispose_engine()
 
 

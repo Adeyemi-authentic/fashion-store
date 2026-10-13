@@ -1,6 +1,6 @@
 # Phase 1: Data model, catalog seed, API skeleton
 
-**Status:** built and tested locally (31 tests pass). Not yet run against Neon, because `DATABASE_URL` / `DATABASE_URL_DIRECT` in `.env` are still placeholders.
+**Status:** built and tested locally (33 tests pass). Not yet run against Neon, because `DATABASE_URL` / `DATABASE_URL_DIRECT` in `.env` are still placeholders.
 
 ## What was built
 - **API project** (`api/`): Python 3.12 via `uv`, FastAPI, async SQLAlchemy 2 + psycopg 3, Alembic, pydantic-settings, ruff, import-linter.
@@ -18,7 +18,8 @@
   - Lagos prices from ₦10,500 to about ₦620,000, in ₦500 steps.
   - 7 products fully sold out and about 10% of variants at zero stock, so out-of-stock screens get tested.
   - Every product has structured `attributes` (fabric, pattern, gender, occasion, fit). Phase 6 builds on these.
-- **Image prompts:** `scripts/generate_images.py` writes 150 prompts with one shared art direction. Nothing is generated yet (open decision below).
+- **Images:** 131 AI-generated product photos (OpenAI `gpt-image-2`, medium quality, about $0.04 each) in `web/public/images/products/`, made by `scripts/generate_images.py` with one shared art direction. Flat-lay items (jewellery, bags, fans, scarves) get specific Nigerian craft detail in their prompts, because the first sample came out generic. The run stopped at 131 when the OpenAI balance ran out, and we decided to keep 131.
+- **Products without an image are seeded as `draft`** (hidden, no image row): 131 active, 19 draft. All 12 headwear products are drafts, so the storefront shows 6 categories. Generating a missing image and re-seeding makes that product live. An `archived` product is never un-archived by a re-seed.
 
 ## Why, and the trade-offs
 - **Cursor (keyset) pagination, not page numbers.** `WHERE (sort_value, id) > (last_value, last_id)` uses the index and never skips or repeats an item when products are added between page loads. With OFFSET, page 40 gets slower and items shift between pages. Cost: you can't jump straight to "page 7". That's fine for an infinite-scroll shop. The `id` tie-breaker matters, because many products share a price.
@@ -38,12 +39,7 @@
 
 ## Your to-do
 1. **Fill in the Neon URLs** in `.env` (pooled → `DATABASE_URL`, direct → `DATABASE_URL_DIRECT`, scheme `postgresql+psycopg://`). Then I'll run `alembic upgrade head` and the seed against Neon and check the endpoints with real latency.
-2. **Pick an image provider.** About $5–10 for 150 images. Options:
-   - **OpenAI `gpt-image-1`:** strong at clothing detail.
-   - **Google Gemini image:** good, cheap.
-   - **Flux via Replicate:** most photographic, per-second billing.
-
-   Whichever you pick, put its key in `IMAGE_GEN_API_KEY`, and I'll add the call and generate the images before Phase 2 needs them.
+2. ~~Pick an image provider~~ Done: OpenAI, 131 images kept.
 
 ## Done when
 - [x] pytest covers the catalog endpoints (pagination for every sort, filters, bad cursors, 404s, hidden drafts).

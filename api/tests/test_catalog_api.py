@@ -156,8 +156,10 @@ async def test_draft_products_are_hidden(client: AsyncClient, session: AsyncSess
 
 
 async def test_categories(client: AsyncClient, seeded: int) -> None:
+    from scripts.catalog_data import build_catalog, has_image
+
     cats = (await client.get("/categories")).json()
-    assert len(cats) == 7
+    assert len(cats) == len({p.category for p in build_catalog() if has_image(p)})
     assert sum(c["product_count"] for c in cats) == seeded
 
 
