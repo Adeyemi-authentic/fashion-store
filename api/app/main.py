@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import models as _all_models  # noqa: F401  (registers every table for cross-module FKs)
 from app.config import get_settings
 from app.db import dispose_engine, get_session
 from app.modules.cart.router import router as cart_router

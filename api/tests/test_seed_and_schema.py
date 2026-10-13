@@ -1,3 +1,7 @@
+import os
+import subprocess
+import sys
+
 import pytest
 from alembic import command
 from sqlalchemy import func, select, text, update
@@ -7,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.catalog.models import Product, ProductImage, Variant
 from scripts.catalog_data import build_catalog
 from scripts.seed_catalog import seed
-from tests.conftest import alembic_config
+from tests.conftest import API_DIR, alembic_config
 
 
 async def counts(session: AsyncSession) -> tuple[int, int, int]:
@@ -149,3 +153,18 @@ async def test_reseed_keeps_archived_products_archived(session: AsyncSession) ->
     finally:
         await session.execute(update(Product).where(Product.slug == slug).values(status="active"))
         await session.commit()
+
+
+def test_app_alone_can_resolve_every_foreign_key() -> None:
+    """In production nothing imports the test fixtures, so the app itself must register every
+    model. Otherwise e.g. carts.customer_id -> customers fails on the first cart write."""
+    code = (
+        "import app.main\n"
+        "from app.modules.cart.models import Cart\n"
+        "for fk in Cart.__table__.foreign_keys: fk.column\n"
+    )
+    env = {**os.environ, "DATABASE_URL": "postgresql+psycopg://unused@localhost/unused"}
+    result = subprocess.run(
+        [sys.executable, "-c", code], cwd=API_DIR, env=env, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
