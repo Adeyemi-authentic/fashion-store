@@ -61,3 +61,12 @@ class ProductDetail(BaseModel):
 class CategoryOut(BaseModel):
     slug: str
     product_count: int
+
+
+class FacetsOut(BaseModel):
+    """Filter options for a listing page, taken from what is actually on sale."""
+
+    sizes: list[str]
+    colours: list[str]
+    min_price_kobo: int | None
+    max_price_kobo: int | None

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import dispose_engine, get_session
+from app.modules.cart.router import router as cart_router
 from app.modules.catalog.router import router as catalog_router
 
 
@@ -21,6 +22,7 @@ def create_app() -> FastAPI:
     # Paths have no /api prefix: Next.js rewrites /api/* to here (ADR-005).
     app = FastAPI(title=f"{get_settings().brand_name} API", lifespan=lifespan)
     app.include_router(catalog_router)
+    app.include_router(cart_router)
 
     @app.get("/health", tags=["ops"])
     async def health(session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:

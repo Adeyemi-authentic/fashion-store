@@ -5,7 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.modules.catalog import service
-from app.modules.catalog.schemas import CategoryOut, ProductDetail, ProductPage, ProductSort
+from app.modules.catalog.schemas import (
+    CategoryOut,
+    FacetsOut,
+    ProductDetail,
+    ProductPage,
+    ProductSort,
+)
 from app.shared.pagination import InvalidCursor
 
 router = APIRouter(tags=["catalog"])
@@ -51,3 +57,8 @@ async def get_product(slug: str, session: Session) -> ProductDetail:
 @router.get("/categories", response_model=list[CategoryOut])
 async def list_categories(session: Session) -> list[CategoryOut]:
     return await service.list_categories(session)
+
+
+@router.get("/facets", response_model=FacetsOut)
+async def get_facets(session: Session, category: str | None = None) -> FacetsOut:
+    return await service.get_facets(session, category)

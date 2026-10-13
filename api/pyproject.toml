@@ -60,3 +60,17 @@ forbidden_modules = [
     "app.modules.payments.models",
     "app.modules.assistant.models",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Cart reads products only through catalog.service"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["app.modules.cart"]
+forbidden_modules = [
+    "app.modules.catalog.models",
+    "app.modules.orders.inventory",
+    "app.modules.orders.models",
+    "app.modules.accounts.models",
+    "app.modules.payments.models",
+    "app.modules.assistant.models",
+]

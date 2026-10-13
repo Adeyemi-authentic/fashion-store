@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.modules.catalog.models import Product, ProductImage, Variant
 from app.modules.catalog.schemas import (
     CategoryOut,
+    FacetsOut,
     ImageOut,
     ProductCard,
     ProductDetail,
@@ -22,6 +23,8 @@ from app.modules.orders.service import available_qty
 from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 MAX_PAGE_SIZE = 60
+# Clothing sizes in shop order; anything else (e.g. "One Size") sorts after these.
+SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]
 
 
 @dataclass(frozen=True)
@@ -58,7 +61,7 @@ def _parse_cursor(cursor: str, sort: ProductSort) -> tuple[datetime | int | str,
     try:
         if not isinstance(raw_value, expected) or isinstance(raw_value, bool):
             raise ValueError("wrong type")
-        value = datetime.fromisoformat(raw_value) if sort is ProductSort.newest else raw_value
+        value = datetime.fromisoformat(str(raw_value)) if sort is ProductSort.newest else raw_value
         return value, uuid.UUID(raw_id)
     except (TypeError, ValueError) as exc:
         raise InvalidCursor("cursor is not valid") from exc
@@ -196,3 +199,75 @@ async def list_categories(session: AsyncSession) -> list[CategoryOut]:
         .order_by(Product.category)
     )
     return [CategoryOut(slug=category, product_count=count) for category, count in rows]
+
+
+async def get_facets(session: AsyncSession, category: str | None = None) -> FacetsOut:
+    base = (
+        select(Variant.size, Variant.colour)
+        .join(Product, Product.id == Variant.product_id)
+        .where(Product.status == "active")
+    )
+    prices = select(func.min(Product.base_price_kobo), func.max(Product.base_price_kobo)).where(
+        Product.status == "active"
+    )
+    if category:
+        base = base.where(Product.category == category)
+        prices = prices.where(Product.category == category)
+    rows = (await session.execute(base.distinct())).all()
+    lo, hi = (await session.execute(prices)).one()
+
+    def size_key(size: str) -> tuple[int, str]:
+        return (SIZE_ORDER.index(size), "") if size in SIZE_ORDER else (len(SIZE_ORDER), size)
+
+    return FacetsOut(
+        sizes=sorted({size for size, _ in rows}, key=size_key),
+        colours=sorted({colour for _, colour in rows}),
+        min_price_kobo=lo,
+        max_price_kobo=hi,
+    )
+
+
+@dataclass(frozen=True)
+class VariantSummary:
+    """What other modules (cart, later orders) need to show or price a variant."""
+
+    variant_id: uuid.UUID
+    sku: str
+    product_slug: str
+    product_name: str
+    size: str
+    colour: str
+    price_kobo: int
+    available: int
+    image: ImageOut | None
+    purchasable: bool  # False once the product is no longer active
+
+
+async def get_variant_summaries(
+    session: AsyncSession, variant_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, VariantSummary]:
+    if not variant_ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(Variant, Product, available_qty().label("available"))
+            .join(Product, Product.id == Variant.product_id)
+            .where(Variant.id.in_(variant_ids))
+            .options(selectinload(Product.images))
+        )
+    ).all()
+    return {
+        v.id: VariantSummary(
+            variant_id=v.id,
+            sku=v.sku,
+            product_slug=p.slug,
+            product_name=p.name,
+            size=v.size,
+            colour=v.colour,
+            price_kobo=v.price_kobo,
+            available=max(0, available),
+            image=_first_image(p.images),
+            purchasable=p.status == "active",
+        )
+        for v, p, available in rows
+    }

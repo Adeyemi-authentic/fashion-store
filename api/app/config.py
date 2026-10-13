@@ -32,6 +32,11 @@ class Settings(BaseSettings):
         return url
 
     @property
+    def cookie_secure(self) -> bool:
+        """Secure cookies need HTTPS. Safari drops them on http://localhost, so dev is off."""
+        return self.public_site_url.startswith("https://")
+
+    @property
     def migrations_database_url(self) -> str:
         return self.database_url_direct or self.database_url
 

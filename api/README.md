@@ -34,4 +34,9 @@ tests/
 | GET | `/products` | filters: `category`, `min_price_kobo`, `max_price_kobo`, `size`, `colour`, `in_stock`; `sort`: `newest`, `price_asc`, `price_desc`, `name`; `limit` (1–60); `cursor` |
 | GET | `/products/{slug}` | variants with live `available` count, images, attributes |
 | GET | `/categories` | slug + product count |
+| GET | `/facets` | sizes, colours and price range on sale; optional `category` |
+| GET | `/cart` | the cart for the `cart_token` cookie (empty if none; never creates one) |
+| POST | `/cart/items` | `{variant_id, qty}`; adds to the line, creates the cart + cookie if needed; 409 if more than available |
+| PATCH | `/cart/items/{variant_id}` | `{qty}`; 0 removes; raising above available is 409, lowering always works |
+| DELETE | `/cart/items/{variant_id}` | remove a line |
 | GET | `/health` | checks the database |
