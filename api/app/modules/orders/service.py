@@ -15,10 +15,14 @@ from app.modules.orders.inventory import (
     available_qty,
 )
 from app.modules.orders.models import ORDER_STATUSES, Order, OrderItem
+from app.modules.orders.payment import Outcome, apply_successful_charge, expire_overdue_orders
 from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 __all__ = [
     "ORDER_STATUSES",
+    "Outcome",
+    "apply_successful_charge",
+    "expire_overdue_orders",
     "OrderRow",
     "StockBelowReserved",
     "StockLevel",
