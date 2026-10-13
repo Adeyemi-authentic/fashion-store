@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { addFirstInStockItem, cleanupTestData, makeAdmin, PASSWORD, signUp, uniqueEmail } from "./helpers";
+import { addFirstInStockItem, makeAdmin, PASSWORD, signUp, uniqueEmail } from "./helpers";
 
-test.afterAll(() => cleanupTestData());
 
 test("a guest's bag survives sign-up; customers can't use admin; sign-out ends the session", async ({ page }) => {
   const itemName = await addFirstInStockItem(page);

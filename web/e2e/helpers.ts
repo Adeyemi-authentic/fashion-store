@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 const API_DIR = path.resolve(__dirname, "../../api");
 export const PASSWORD = "e2e password 123";
@@ -29,7 +29,11 @@ export async function signUp(page: Page, email: string, next?: string): Promise<
 export async function addFirstInStockItem(page: Page): Promise<string> {
   await page.goto("/c/adire?in_stock=1");
   await page.getByTestId("product-card").first().click();
+  await page.waitForURL(/\/p\//); // or we'd read the category page's <h1>
   const name = await page.getByRole("heading", { level: 1 }).innerText();
+  // The picker's buttons are disabled until the page has hydrated.
+  await page.getByRole("button", { name: "Add to bag" }).waitFor();
+  await expect(page.getByRole("group", { name: /Colour/ }).getByRole("button").first()).toBeEnabled();
   const size = page.getByRole("group", { name: "Size" }).getByRole("button", { disabled: false }).first();
   if (await size.count()) await size.click();
   await page.getByRole("button", { name: "Add to bag" }).click();

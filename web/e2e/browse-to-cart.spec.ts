@@ -13,11 +13,13 @@ test("browse a category, pick a size, add to bag, change qty, survive a reload",
   await expect(page).toHaveURL(/in_stock=1/);
   await expect(page.getByText("Sold out", { exact: true })).toHaveCount(0);
   await page.getByTestId("product-card").first().click();
+  await page.waitForURL(/\/p\//);
 
   // Product page: pick the first size that isn't sold out (unless it's one-size)
   const addButton = page.getByRole("button", { name: "Add to bag" });
   await expect(addButton).toBeVisible();
   const productName = await page.getByRole("heading", { level: 1 }).innerText();
+  await expect(page.getByRole("group", { name: /Colour/ }).getByRole("button").first()).toBeEnabled(); // hydrated
   let foundStock = false;
   for (const colour of await page.getByRole("group", { name: /Colour/ }).getByRole("button").all()) {
     await colour.click();
@@ -78,6 +80,7 @@ test("asking for more than is in stock shows a message instead of failing", asyn
   const t = target!;
 
   await page.goto(`/p/${t.slug}`);
+  await expect(page.getByRole("group", { name: /Colour/ }).getByRole("button").first()).toBeEnabled(); // hydrated
   await page.getByRole("group", { name: /Colour/ }).getByRole("button", { name: t.colour, exact: true }).click();
   if (t.size !== "One Size") {
     await page.getByRole("group", { name: "Size" }).getByRole("button", { name: t.size, exact: true }).click();
