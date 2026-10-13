@@ -13,6 +13,7 @@ from app.modules.accounts.router import router as accounts_router
 from app.modules.admin.router import router as admin_router
 from app.modules.cart.router import router as cart_router
 from app.modules.catalog.router import router as catalog_router
+from app.modules.orders.router import router as orders_router
 
 
 @asynccontextmanager
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(cart_router)
     app.include_router(accounts_router)
     app.include_router(admin_router)
+    app.include_router(orders_router)
 
     @app.get("/health", tags=["ops"])
     async def health(session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:

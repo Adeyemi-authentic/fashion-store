@@ -46,6 +46,11 @@ class Order(Base):
         ForeignKey("customers.id"), nullable=True, index=True
     )
     guest_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The cart this order was checked out from. Paid items are removed from it then, not at
+    # checkout, so an abandoned payment doesn't empty the customer's bag.
+    cart_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("carts.id", ondelete="SET NULL"), nullable=True
+    )
     status: Mapped[str] = mapped_column(
         Text, default="pending_payment", server_default="pending_payment"
     )

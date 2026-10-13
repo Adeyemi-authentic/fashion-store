@@ -124,3 +124,62 @@ async def make_client(seeded: int) -> AsyncIterator:  # type: ignore[type-arg]
     yield _make
     for c in clients:
         await c.aclose()
+
+
+@pytest.fixture
+def paystack(monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
+    """Every request in the test talks to an in-memory Paystack."""
+    from app.modules.payments import paystack as module
+    from app.modules.payments.fake import FakePaystack
+
+    fake = FakePaystack()
+    monkeypatch.setattr(module, "_client", fake)
+    return fake
+
+
+@pytest.fixture
+async def stocked(session: AsyncSession):  # type: ignore[no-untyped-def]
+    """Two variants of active products with exactly 5 available each (nothing reserved).
+    Afterwards: orders touching them are deleted (with their holds, keys and jobs) and the
+    stock is put back. Fails the test if stock_reserved drifted from the reservations."""
+    from sqlalchemy import delete, select, update
+
+    from app.db import get_sessionmaker
+    from app.modules.catalog.models import Product, Variant
+    from app.modules.orders import inventory
+    from app.modules.orders.models import IdempotencyKey, Order, OrderItem
+    from app.platform.models import OutboxJob
+
+    variants = list(
+        (
+            await session.execute(
+                select(Variant)
+                .join(Product)
+                .where(Product.status == "active")
+                .order_by(Variant.sku)
+                .offset(70)
+                .limit(2)
+            )
+        ).scalars()
+    )
+    saved = {v.id: (v.stock_on_hand, v.stock_reserved) for v in variants}
+    await session.execute(
+        update(Variant).where(Variant.id.in_(saved)).values(stock_on_hand=5, stock_reserved=0)
+    )
+    await session.commit()
+    session.expunge_all()
+    yield variants
+    await session.rollback()
+    orders = select(OrderItem.order_id).where(OrderItem.variant_id.in_(saved))
+    await session.execute(delete(IdempotencyKey).where(IdempotencyKey.order_id.in_(orders)))
+    await session.execute(delete(OutboxJob))
+    await session.execute(delete(Order).where(Order.id.in_(orders)))
+    for vid, (on_hand, reserved) in saved.items():
+        await session.execute(
+            update(Variant)
+            .where(Variant.id == vid)
+            .values(stock_on_hand=on_hand, stock_reserved=reserved)
+        )
+    await session.commit()
+    async with get_sessionmaker()() as s:
+        assert await inventory.reserved_mismatches(s) == []

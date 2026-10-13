@@ -10,7 +10,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import delete, func, literal, select, update
+from sqlalchemy import and_, delete, func, literal, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,15 @@ class CartOwner:
 
     customer_id: uuid.UUID | None = None
     token: str | None = None
+
+    @property
+    def ref(self) -> str | None:
+        """A stable, non-secret name for this owner (scopes idempotency keys per buyer)."""
+        if self.customer_id is not None:
+            return f"c:{self.customer_id}"
+        if self.token:
+            return f"g:{_hash(self.token)[:32]}"
+        return None
 
 
 @dataclass
@@ -230,3 +239,46 @@ def _line(s: VariantSummary, qty: int) -> CartLineOut:
         available=s.available,
         problem=problem,
     )
+
+
+@dataclass(frozen=True)
+class CheckoutLine:
+    variant_id: uuid.UUID
+    qty: int
+    unit_price_kobo: int
+    name: str
+    sku: str
+    problem: LineProblem | None
+
+
+async def checkout_lines(
+    session: AsyncSession, owner: CartOwner
+) -> tuple[uuid.UUID | None, list[CheckoutLine]]:
+    """The cart's id and its lines with live prices, for checkout to copy into an order."""
+    cart = await _find_cart(session, owner, lock=False)
+    if cart is None:
+        return None, []
+    view_ = await view(session, owner)
+    return cart.id, [
+        CheckoutLine(
+            variant_id=line.variant_id,
+            qty=line.qty,
+            unit_price_kobo=line.unit_price_kobo,
+            name=f"{line.product_name} ({line.colour}, {line.size})",
+            sku=line.sku,
+            problem=line.problem,
+        )
+        for line in view_.items
+    ]
+
+
+async def remove_purchased(
+    session: AsyncSession, cart_id: uuid.UUID, items: list[tuple[uuid.UUID, int]]
+) -> None:
+    """After payment: take what was bought out of the cart. A line the customer has raised
+    since checkout keeps the extra units. Doesn't commit."""
+    for variant_id, qty in items:
+        line = and_(CartItem.cart_id == cart_id, CartItem.variant_id == variant_id)
+        # Delete fully-bought lines first: lowering one to 0 would break CHECK (qty > 0).
+        await session.execute(delete(CartItem).where(line, CartItem.qty <= qty))
+        await session.execute(update(CartItem).where(line).values(qty=CartItem.qty - qty))
