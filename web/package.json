@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:safari": "node e2e/safari.mjs"
   },
   "dependencies": {
     "next": "16.4.0",
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "selenium-webdriver": "^4.38.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // Runs against a production build (`npm run build && npm start`) with the API on :8000.
-// WebKit stands in for Safari: it applies the same cookie rules (ITP) that ADR-005 is about.
+// "iphone-safari" uses Playwright's WebKit. Its macOS 14 build crashes on launch on this
+// machine, so the real-Safari check is e2e/safari.mjs (`npm run e2e:safari`) instead.
 export default defineConfig({
   testDir: "e2e",
   timeout: 60_000,
