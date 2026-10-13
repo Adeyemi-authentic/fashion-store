@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CancelOrderButton } from "@/components/admin/CancelOrderButton";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import type { AdminOrder } from "@/lib/admin-types";
 import { formatNaira } from "@/lib/format";
@@ -32,7 +33,7 @@ export default async function AdminOrders(props: PageProps<"/admin/orders">) {
         ))}
       </div>
       {items.length === 0 ? (
-        <p className="py-10 text-muted">No orders{status && ` with status “${status.replace("_", " ")}”`} yet. Checkout arrives in Phase 4.</p>
+        <p className="py-10 text-muted">No orders{status && ` with status “${status.replace("_", " ")}”`} yet.</p>
       ) : (
         <ul className="mt-5 divide-y divide-line rounded-lg border border-line bg-white">
           {items.map((o) => (
@@ -47,6 +48,7 @@ export default async function AdminOrders(props: PageProps<"/admin/orders">) {
                   {o.needs_review && <StatusBadge status="needs review" />}
                   <StatusBadge status={o.status} />
                 </span>
+                {o.status === "pending_payment" && <CancelOrderButton orderId={o.id} />}
               </div>
             </li>
           ))}

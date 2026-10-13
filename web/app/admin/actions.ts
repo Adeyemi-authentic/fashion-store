@@ -58,3 +58,10 @@ export async function adjustStock(variantId: string, slug: string, delta: number
   shopChanged(slug);
   return { ok: true, message: "Stock updated" };
 }
+
+export async function cancelOrder(orderId: string): Promise<ActionResult> {
+  const r = await apiAs(`/admin/orders/${orderId}/cancel`, { method: "POST" });
+  if (!r.ok) return { ok: false, error: r.error };
+  shopChanged(); // its held stock is free again
+  return { ok: true, message: "Cancelled" };
+}

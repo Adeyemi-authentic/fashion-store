@@ -75,14 +75,17 @@ export function CartDrawer() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted">Delivery is worked out at checkout.</p>
-              <button
-                type="button"
-                disabled
-                className="mt-4 w-full rounded-full bg-ink py-3.5 text-sm font-semibold text-cream disabled:opacity-50"
-                title="Checkout arrives in Phase 4"
-              >
-                Checkout (coming soon)
-              </button>
+              {cart.can_checkout ? (
+                <Link
+                  href="/checkout"
+                  onClick={close}
+                  className="mt-4 block w-full rounded-full bg-ink py-3.5 text-center text-sm font-semibold text-cream"
+                >
+                  Checkout
+                </Link>
+              ) : (
+                <p className="mt-4 rounded-lg bg-sand p-3 text-sm">Fix the items marked above to check out.</p>
+              )}
             </div>
           </>
         )}

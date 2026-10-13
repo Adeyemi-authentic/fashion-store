@@ -12,6 +12,7 @@ type CartContextValue = {
   close: () => void;
   add: (variantId: string, qty?: number) => Promise<Result>;
   setQty: (variantId: string, qty: number) => Promise<Result>;
+  refresh: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -58,6 +59,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return next;
   }, []);
 
+  const refresh = useCallback(async () => {
+    const result = await call("/cart");
+    if (!("error" in result)) setCart(result);
+  }, []);
+
   useEffect(() => {
     call("/cart").then((result) => {
       if (!("error" in result)) setCart(result);
@@ -83,6 +89,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     close: useCallback(() => setIsOpen(false), []),
     add,
     setQty,
+    refresh,
   };
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

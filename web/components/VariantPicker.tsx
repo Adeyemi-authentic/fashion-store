@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatNaira } from "@/lib/format";
 import type { ProductDetail, Variant } from "@/lib/types";
+import { useHydrated } from "@/lib/useHydrated";
 import { useCart } from "./cart/CartProvider";
 
 const LOW_STOCK = 3;
@@ -16,6 +17,7 @@ const sizeRank = (size: string) => (SIZE_ORDER.includes(size) ? SIZE_ORDER.index
  */
 export function VariantPicker({ product }: { product: ProductDetail }) {
   const { add, open } = useCart();
+  const hydrated = useHydrated();
   const [variants, setVariants] = useState<Variant[]>(product.variants);
   // attributes.colours lists the pictured colour first (the seed photographs that one), so the
   // picker opens on the colour the photo shows.
@@ -85,6 +87,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
               key={c}
               type="button"
               aria-pressed={c === colour}
+              disabled={!hydrated}
               onClick={() => {
                 setColour(c);
                 setStatus({ kind: "idle" });
@@ -108,7 +111,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
                   key={v.id}
                   type="button"
                   aria-pressed={v.size === size}
-                  disabled={soldOut}
+                  disabled={soldOut || !hydrated}
                   onClick={() => {
                     setSize(v.size);
                     setStatus({ kind: "idle" });
@@ -116,7 +119,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
                   aria-label={soldOut ? `${v.size}, sold out` : v.size}
                   className={`h-11 rounded-lg border text-sm ${
                     v.size === size ? "border-ink bg-ink text-cream" : "border-line hover:border-ink"
-                  } disabled:cursor-not-allowed disabled:text-muted disabled:line-through disabled:opacity-60`}
+                  } ${soldOut ? "cursor-not-allowed text-muted line-through opacity-60" : ""}`}
                 >
                   {v.size}
                 </button>
@@ -143,7 +146,7 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
       <button
         type="button"
         onClick={addToBag}
-        disabled={status.kind === "adding" || selected?.available === 0}
+        disabled={!hydrated || status.kind === "adding" || selected?.available === 0}
         className="mt-3 w-full rounded-full bg-ink py-4 text-sm font-semibold text-cream disabled:opacity-50"
       >
         {status.kind === "adding" ? "Adding…" : "Add to bag"}
