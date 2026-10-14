@@ -18,10 +18,5 @@ async def refresh_embeddings(
     if not stale:
         return 0
     vectors = await embedder.embed([s.text for s in stale], "document")
-    saved = 0
-    for item, vector in zip(stale, vectors, strict=True):
-        saved += await catalog.save_embedding(
-            session, item.product_id, vector, item.hash, embedder.model
-        )
-    await session.flush()
-    return saved
+    items = [(s.product_id, v, s.hash) for s, v in zip(stale, vectors, strict=True)]
+    return await catalog.save_embeddings(session, items, embedder.model)

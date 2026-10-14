@@ -57,7 +57,7 @@ async def test_embedding_made_from_old_text_is_not_saved(session: AsyncSession) 
     product.name = old_name + " (edited while embedding)"
     await session.flush()
     vector = (await HashEmbedder().embed([item.text], "document"))[0]
-    assert await catalog.save_embedding(session, product.id, vector, item.hash, "m2") is False
+    assert await catalog.save_embeddings(session, [(product.id, vector, item.hash)], "m2") == 0
     await session.rollback()
 
 

@@ -61,25 +61,33 @@ async def stale_embeddings(
     return out
 
 
-async def save_embedding(
+async def save_embeddings(
     session: AsyncSession,
-    product_id: uuid.UUID,
-    vector: list[float],
-    expected_hash: str,
+    items: list[tuple[uuid.UUID, list[float], str]],
     model: str,
-) -> bool:
-    """Store an embedding only if the product still has the text it was made from. If an
-    admin edited the product while the embedding was being made, this one is already stale;
-    the edit queued its own refresh, so skipping is correct. Returns whether it was saved."""
-    product = await session.get(Product, product_id, with_for_update=True)
-    if product is None or embedding_hash(embedding_text(product), model) != expected_hash:
-        return False
-    await session.execute(
-        update(Product)
-        .where(Product.id == product_id)
-        .values(embedding=vector, embedding_hash=expected_hash)
-    )
-    return True
+) -> int:
+    """Store (product id, embedding, hash of the text it was made from) for many products in
+    two round trips (a backfill from Lagos to Neon pays ~0.5 s per round trip, so one
+    UPDATE per product took minutes). An embedding is stored only if the product still has
+    the text it was made from: if an admin edited it meanwhile, that edit queued its own
+    refresh, so skipping is correct. Returns how many were saved."""
+    if not items:
+        return 0
+    wanted = {pid: (vec, h) for pid, vec, h in items}
+    products = (
+        await session.execute(
+            select(Product).where(Product.id.in_(wanted)).order_by(Product.id).with_for_update()
+        )
+    ).scalars()
+    fresh = [
+        {"id": p.id, "embedding": wanted[p.id][0], "embedding_hash": wanted[p.id][1]}
+        for p in products
+        if embedding_hash(embedding_text(p), model) == wanted[p.id][1]
+    ]
+    if fresh:
+        # ORM bulk UPDATE by primary key: one executemany for all rows.
+        await session.execute(update(Product), fresh)
+    return len(fresh)
 
 
 # ---------------------------------------------------------------------------------------------

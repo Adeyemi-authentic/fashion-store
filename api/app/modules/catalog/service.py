@@ -28,7 +28,7 @@ from app.modules.catalog.retrieval import (  # noqa: F401  (public interface)
     SearchVocabulary,
     embedding_text,
     keyword_candidates,
-    save_embedding,
+    save_embeddings,
     search_vocabulary,
     stale_embeddings,
     vector_candidates,

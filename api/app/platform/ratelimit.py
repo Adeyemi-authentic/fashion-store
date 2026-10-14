@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from fastapi import HTTPException, Request
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
 from app.config import get_settings
@@ -37,15 +37,19 @@ async def hit(key: str, limit: int) -> Verdict:
     count sticks even if the request itself later fails (failed attempts must count too)."""
     async with get_sessionmaker()() as session:
         window = func.date_trunc("minute", func.now())
-        count = await session.scalar(
-            insert(rate_limits)
-            .values(key=key, window_start=window, count=1)
-            .on_conflict_do_update(
-                index_elements=["key", "window_start"], set_={"count": rate_limits.c.count + 1}
+        # Count and seconds left in one statement: every round trip counts (each search
+        # and checkout pays for this one before doing anything else).
+        count, seconds_left = (
+            await session.execute(
+                insert(rate_limits)
+                .values(key=key, window_start=window, count=1)
+                .on_conflict_do_update(
+                    index_elements=["key", "window_start"],
+                    set_={"count": rate_limits.c.count + 1},
+                )
+                .returning(rate_limits.c.count, 60 - func.extract("second", func.now()))
             )
-            .returning(rate_limits.c.count)
-        )
-        seconds_left = await session.scalar(select(60 - func.extract("second", func.now())))
+        ).one()
         await session.commit()
     assert count is not None
     return Verdict(count <= limit, count, max(1, int(seconds_left or 1)))
