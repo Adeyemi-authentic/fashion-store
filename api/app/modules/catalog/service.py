@@ -26,6 +26,7 @@ from app.modules.catalog.schemas import (
     ProductPage,
     ProductSort,
     ProductUpdateIn,
+    StockOut,
     VariantIn,
     VariantOut,
 )
@@ -199,6 +200,18 @@ async def get_product(session: AsyncSession, slug: str) -> ProductDetail | None:
         variants=variants,
         images=[ImageOut(url=i.url, alt=i.alt) for i in product.images],
     )
+
+
+async def get_stock(session: AsyncSession, slug: str) -> list[StockOut] | None:
+    product_id = await session.scalar(
+        select(Product.id).where(Product.slug == slug, Product.status == "active")
+    )
+    if product_id is None:
+        return None
+    rows = await session.execute(
+        select(Variant.id, available_qty()).where(Variant.product_id == product_id)
+    )
+    return [StockOut(variant_id=v, available=max(0, int(a))) for v, a in rows]
 
 
 async def list_categories(session: AsyncSession) -> list[CategoryOut]:

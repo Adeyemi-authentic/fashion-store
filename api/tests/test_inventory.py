@@ -163,17 +163,21 @@ async def test_expired_hold_counts_as_stock_with_nothing_releasing_it(
     await inventory.reserve(session, order_id, [(a.id, 10)], later())
     await session.commit()
     slug = await session.scalar(select(Product.slug).where(Product.id == a.product_id))
+    # The live endpoint the product page uses (the product detail itself is cached).
     available = {
-        v["sku"]: v["available"] for v in (await client.get(f"/products/{slug}")).json()["variants"]
+        v["variant_id"]: v["available"]
+        for v in (await client.get(f"/products/{slug}/stock")).json()
     }
-    assert available[a.sku] == 0
+    assert available[str(a.id)] == 0
 
     await expire_holds(session, order_id)
     assert await levels(session, a) == (10, 10, 10)  # counter not tidied, but shoppers see 10
+    # The live endpoint the product page uses (the product detail itself is cached).
     available = {
-        v["sku"]: v["available"] for v in (await client.get(f"/products/{slug}")).json()["variants"]
+        v["variant_id"]: v["available"]
+        for v in (await client.get(f"/products/{slug}/stock")).json()
     }
-    assert available[a.sku] == 10
+    assert available[str(a.id)] == 10
     assert (
         await client.post("/cart/items", json={"variant_id": str(a.id), "qty": 10})
     ).status_code == 200

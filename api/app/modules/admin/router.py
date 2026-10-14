@@ -19,6 +19,7 @@ from app.modules.catalog.schemas import (
     VariantPriceIn,
 )
 from app.modules.orders import service as orders
+from app.platform.cache import catalog_cache
 from app.shared.pagination import InvalidCursor
 
 log = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ async def create_product(body: ProductCreateIn, session: Session, admin: Admin) 
         if qty:
             await orders.adjust_stock(session, variant_id, qty)
     await session.commit()
+    catalog_cache.clear()  # shoppers see the change now, not in a minute
     product = await catalog.admin_get_product(session, product_id)
     assert product is not None
     log.info("admin %s created product %s", admin.email, product.slug)
@@ -86,6 +88,7 @@ async def update_product(
     except catalog.CannotPublish as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     await session.commit()
+    catalog_cache.clear()  # shoppers see the change now, not in a minute
     log.info("admin %s updated product %s", admin.email, slug)
     return await get_product(product_id, session)
 
@@ -109,6 +112,7 @@ async def add_variant(
     if body.stock_on_hand:
         await orders.adjust_stock(session, variant_id, body.stock_on_hand)
     await session.commit()
+    catalog_cache.clear()  # shoppers see the change now, not in a minute
     log.info("admin %s added variant to %s", admin.email, slug)
     return await get_product(product_id, session)
 
@@ -122,6 +126,7 @@ async def set_price(
     except catalog.ProductNotFound as exc:
         raise HTTPException(status_code=404, detail="variant not found") from exc
     await session.commit()
+    catalog_cache.clear()  # shoppers see the change now, not in a minute
     log.info("admin %s set price of %s on %s", admin.email, variant_id, slug)
     product_id = await catalog.product_id_for_variant(session, variant_id)
     return await get_product(product_id, session)
@@ -145,6 +150,7 @@ async def adjust_stock(
             message = f"Can't remove more than the {exc.on_hand} on hand"
         raise HTTPException(status_code=409, detail=message) from exc
     await session.commit()
+    catalog_cache.clear()  # shoppers see the change now, not in a minute
     log.info(
         "admin %s stock %+d on %s (%s) -> %d",
         admin.email,
@@ -206,4 +212,5 @@ async def cancel_order(order_id: UUID, session: Session, admin: Admin) -> None:
             detail=f"Only unpaid orders can be cancelled (this one is {exc.current})",
         ) from exc
     await session.commit()
+    catalog_cache.clear()  # shoppers see the change now, not in a minute
     log.info("admin %s cancelled order %s", admin.email, order_id)

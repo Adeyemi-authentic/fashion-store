@@ -11,7 +11,9 @@ from app.modules.catalog.schemas import (
     ProductDetail,
     ProductPage,
     ProductSort,
+    StockOut,
 )
+from app.platform.cache import catalog_cache
 from app.shared.pagination import InvalidCursor
 
 router = APIRouter(tags=["catalog"])
@@ -40,15 +42,22 @@ async def list_products(
         colour=colour,
         in_stock=in_stock,
     )
+    key = f"products:{filters}:{sort.value}:{limit}:{cursor}"
     try:
-        return await service.list_products(session, filters, sort, limit, cursor)
+        return await catalog_cache.get_or_load(
+            key, lambda: service.list_products(session, filters, sort, limit, cursor)
+        )
     except InvalidCursor as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/products/{slug}", response_model=ProductDetail)
 async def get_product(slug: str, session: Session) -> ProductDetail:
-    product = await service.get_product(session, slug)
+    """Cached for up to a minute, including the stock numbers in it. The product page shows
+    live stock from /products/{slug}/stock instead, and the cart re-checks on every add."""
+    product = await catalog_cache.get_or_load(
+        f"product:{slug}", lambda: service.get_product(session, slug)
+    )
     if product is None:
         raise HTTPException(status_code=404, detail="product not found")
     return product
@@ -56,9 +65,20 @@ async def get_product(slug: str, session: Session) -> ProductDetail:
 
 @router.get("/categories", response_model=list[CategoryOut])
 async def list_categories(session: Session) -> list[CategoryOut]:
-    return await service.list_categories(session)
+    return await catalog_cache.get_or_load("categories", lambda: service.list_categories(session))
 
 
 @router.get("/facets", response_model=FacetsOut)
 async def get_facets(session: Session, category: str | None = None) -> FacetsOut:
-    return await service.get_facets(session, category)
+    return await catalog_cache.get_or_load(
+        f"facets:{category}", lambda: service.get_facets(session, category)
+    )
+
+
+@router.get("/products/{slug}/stock", response_model=list[StockOut])
+async def get_stock(slug: str, session: Session) -> list[StockOut]:
+    """Live, never cached: what can be bought right now, per variant."""
+    stock = await service.get_stock(session, slug)
+    if stock is None:
+        raise HTTPException(status_code=404, detail="product not found")
+    return stock

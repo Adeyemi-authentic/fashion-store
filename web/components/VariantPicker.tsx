@@ -36,10 +36,13 @@ export function VariantPicker({ product }: { product: ProductDetail }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/products/${encodeURIComponent(product.slug)}`, { cache: "no-store" })
+    // Live counts (the API caches the product itself for up to a minute; this never is).
+    fetch(`/api/products/${encodeURIComponent(product.slug)}/stock`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((fresh: ProductDetail | null) => {
-        if (fresh && !cancelled) setVariants(fresh.variants);
+      .then((live: { variant_id: string; available: number }[] | null) => {
+        if (!live || cancelled) return;
+        const byId = new Map(live.map((s) => [s.variant_id, s.available]));
+        setVariants((vs) => vs.map((v) => ({ ...v, available: byId.get(v.id) ?? v.available })));
       })
       .catch(() => {}); // keep the cached numbers; the cart re-checks anyway
     return () => {

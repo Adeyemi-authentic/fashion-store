@@ -59,6 +59,11 @@ class ProductDetail(BaseModel):
     images: list[ImageOut]
 
 
+class StockOut(BaseModel):
+    variant_id: UUID
+    available: int
+
+
 class CategoryOut(BaseModel):
     slug: str
     product_count: int
