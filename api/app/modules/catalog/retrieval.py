@@ -7,6 +7,7 @@ does the ranking logic; the SQL that touches catalog tables stays here.
 import hashlib
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import Select, Text, cast, exists, func, select, update
 from sqlalchemy.dialects.postgresql import TSQUERY
@@ -208,3 +209,26 @@ async def search_vocabulary(session: AsyncSession) -> SearchVocabulary:
         tuple(sorted(colours)),
         tuple((c, tuple(sorted(t))) for c, t in sorted(by_category.items())),
     )
+
+
+async def similar_products(
+    session: AsyncSession, product_id: uuid.UUID, limit: int, in_stock_clause: Any
+) -> list[uuid.UUID]:
+    """Nearest neighbours of this product's embedding: visible, in stock, not itself. A
+    product without an embedding yet (just created, job still queued) gets its category's
+    newest in-stock products instead."""
+    product = await session.get(Product, product_id)
+    if product is None:
+        return []
+    stmt = select(Product.id).where(
+        Product.status == "active", Product.id != product_id, in_stock_clause
+    )
+    if product.embedding is not None:
+        stmt = stmt.where(Product.embedding.is_not(None)).order_by(
+            Product.embedding.cosine_distance(product.embedding), Product.slug
+        )
+    else:
+        stmt = stmt.where(Product.category == product.category).order_by(
+            Product.created_at.desc(), Product.slug
+        )
+    return list((await session.execute(stmt.limit(limit))).scalars())

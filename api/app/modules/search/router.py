@@ -1,12 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.modules.catalog.schemas import ProductCard
 from app.modules.search import service
+from app.modules.search.recommendations import recommend
+from app.platform.cache import catalog_cache
 from app.platform.ratelimit import search_limit
 
 router = APIRouter(tags=["search"])
@@ -54,3 +56,20 @@ async def search(
         ),
         relaxed=result.relaxed,
     )
+
+
+class RecommendationsOut(BaseModel):
+    similar: list[ProductCard]
+    bought_together: list[ProductCard]
+
+
+@router.get("/products/{slug}/recommendations", response_model=RecommendationsOut)
+async def recommendations(
+    slug: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> RecommendationsOut:
+    """Cached for up to a minute like the rest of the catalog: an item that sells out may
+    stay in "similar" for that long, and its own page then shows it as sold out."""
+    recs = await catalog_cache.get_or_load(f"recs:{slug}", lambda: recommend(session, slug))
+    if recs is None:
+        raise HTTPException(status_code=404, detail="product not found")
+    return RecommendationsOut(similar=recs.similar, bought_together=recs.bought_together)

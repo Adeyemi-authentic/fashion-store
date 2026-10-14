@@ -23,6 +23,9 @@ from app.modules.catalog.retrieval import (  # noqa: F401  (public interface)
     stale_embeddings,
     vector_candidates,
 )
+from app.modules.catalog.retrieval import (
+    similar_products as _similar_products,
+)
 from app.modules.catalog.schemas import (
     AdminProductOut,
     AdminProductPage,
@@ -168,6 +171,18 @@ def _card(product: Product, in_stock: bool) -> ProductCard:
         price_kobo=product.base_price_kobo,
         in_stock=bool(in_stock),
         image=_first_image(product.images),
+    )
+
+
+async def similar_products(
+    session: AsyncSession, product_id: uuid.UUID, limit: int = 8
+) -> list[uuid.UUID]:
+    return await _similar_products(session, product_id, limit, _in_stock_clause())
+
+
+async def product_id_for_slug(session: AsyncSession, slug: str) -> uuid.UUID | None:
+    return await session.scalar(
+        select(Product.id).where(Product.slug == slug, Product.status == "active")
     )
 
 

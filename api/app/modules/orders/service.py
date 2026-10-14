@@ -127,3 +127,34 @@ async def delete_old_idempotency_keys(session: AsyncSession, older_than: timedel
         delete(IdempotencyKey).where(IdempotencyKey.created_at < func.now() - older_than)
     )
     return result.rowcount  # type: ignore[attr-defined,no-any-return]
+
+
+# Orders that count as a real purchase for "frequently bought together".
+BOUGHT = ("paid", "fulfilled")
+
+
+async def bought_together(
+    session: AsyncSession, product_id: uuid.UUID, min_orders: int = 2, limit: int = 8
+) -> list[tuple[uuid.UUID, int]]:
+    """Other products that appear in the same paid orders as this one, with how many
+    orders they shared, most first. `min_orders` keeps one shopper's odd basket from
+    becoming a recommendation for everyone."""
+    from app.modules.catalog.models import Variant
+
+    with_product = (
+        select(OrderItem.order_id)
+        .join(Variant, Variant.id == OrderItem.variant_id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(Variant.product_id == product_id, Order.status.in_(BOUGHT))
+    )
+    shared = func.count(func.distinct(OrderItem.order_id))
+    rows = await session.execute(
+        select(Variant.product_id, shared)
+        .join(Variant, Variant.id == OrderItem.variant_id)
+        .where(OrderItem.order_id.in_(with_product), Variant.product_id != product_id)
+        .group_by(Variant.product_id)
+        .having(shared >= min_orders)
+        .order_by(shared.desc(), Variant.product_id)
+        .limit(limit)
+    )
+    return [(pid, int(n)) for pid, n in rows]
