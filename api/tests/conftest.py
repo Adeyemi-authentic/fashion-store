@@ -248,6 +248,7 @@ def generous_rate_limits(monkeypatch: pytest.MonkeyPatch, request: pytest.Fixtur
     monkeypatch.setattr(get_settings(), "rate_limit_checkout_per_min", 10_000)
     monkeypatch.setattr(get_settings(), "rate_limit_login_per_min", 10_000)
     monkeypatch.setattr(get_settings(), "rate_limit_search_per_min", 10_000)
+    monkeypatch.setattr(get_settings(), "rate_limit_assistant_per_min", 10_000)
 
 
 @pytest.fixture(autouse=True)

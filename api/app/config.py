@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     voyage_api_key: str = ""
     embedding_model: str = "voyage-4"  # 1024 dimensions, matching products.embedding
     rate_limit_search_per_min: int = 30
+    # Shopping assistant (Phase 7). Empty model: llm_model. The spend cap is per UTC day,
+    # across all shoppers; past it the widget points to search instead.
+    assistant_model: str = ""
+    assistant_effort: str = "medium"
+    assistant_daily_budget_usd: float = 1.0
+    assistant_max_turns: int = 25  # shopper messages per conversation
+    rate_limit_assistant_per_min: int = 10
     log_level: str = "INFO"
     sentry_dsn: str = ""  # empty: Sentry off
     metrics_token: str = ""  # set in production: /metrics then needs "Bearer <token>"

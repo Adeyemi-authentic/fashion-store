@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.db import dispose_engine, get_session, get_sessionmaker
 from app.modules.accounts.router import router as accounts_router
 from app.modules.admin.router import router as admin_router
+from app.modules.assistant.router import router as assistant_router
 from app.modules.cart.router import router as cart_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.orders.router import router as orders_router
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(orders_router)
     app.include_router(payments_router)
     app.include_router(search_router)
+    app.include_router(assistant_router)
 
     @app.get("/metrics", tags=["ops"], include_in_schema=False)
     async def metrics(

@@ -11,6 +11,7 @@ from app.config import get_settings
 
 CART_COOKIE = "cart_token"
 SESSION_COOKIE = "session"
+ASSISTANT_COOKIE = "assistant_session"  # which assistant conversation is open
 THIRTY_DAYS = 60 * 60 * 24 * 30
 
 

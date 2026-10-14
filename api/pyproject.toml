@@ -110,3 +110,19 @@ forbidden_modules = [
     "app.modules.payments.models",
     "app.modules.assistant.models",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Assistant uses other modules only through their service"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["app.modules.assistant"]
+forbidden_modules = [
+    "app.modules.catalog.models",
+    "app.modules.catalog.retrieval",
+    "app.modules.cart.models",
+    "app.modules.orders.inventory",
+    "app.modules.orders.models",
+    "app.modules.orders.receipts",
+    "app.modules.accounts.models",
+    "app.modules.payments",
+]
