@@ -2,7 +2,7 @@
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,7 @@ from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 __all__ = [
     "ORDER_STATUSES",
+    "delete_old_idempotency_keys",
     "apply_refund_event",
     "InvalidTransition",
     "OrderNotFound",
@@ -113,3 +114,16 @@ async def list_orders(
 
 async def order_id_for_reference(session: AsyncSession, reference: str) -> uuid.UUID | None:
     return await session.scalar(select(Order.id).where(Order.paystack_reference == reference))
+
+
+async def delete_old_idempotency_keys(session: AsyncSession, older_than: timedelta) -> int:
+    """A retry after a day is a new checkout, not a repeat. Also clears keys stuck
+    'in_progress' by a crash between commit and Paystack. Doesn't commit."""
+    from sqlalchemy import delete
+
+    from app.modules.orders.models import IdempotencyKey
+
+    result = await session.execute(
+        delete(IdempotencyKey).where(IdempotencyKey.created_at < func.now() - older_than)
+    )
+    return result.rowcount  # type: ignore[attr-defined,no-any-return]

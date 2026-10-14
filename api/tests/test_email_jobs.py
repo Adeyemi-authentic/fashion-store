@@ -31,14 +31,14 @@ async def test_paid_order_sends_one_confirmation_with_the_job_id_as_key(
 ) -> None:  # type: ignore[no-untyped-def]
     a, _ = stocked
     out = await paid_order(client, paystack, a, qty=2, email="guest@example.com")
-    assert await run_all() == ["done"]
+    assert set(await run_all()) == {"done"}  # confirmation (+ a low-stock alert: 3 left)
     (mail,) = outbox_email.to("guest@example.com")
     assert "order confirmed" in mail.subject and "₦" in mail.subject
     assert "x 2" in mail.text and out["reference"] in mail.text
     job_id = await session.scalar(
         select(OutboxJob.id).where(OutboxJob.type == "order_confirmation_email")
     )
-    assert outbox_email.calls == [f"job-{job_id}"]
+    assert f"job-{job_id}" in outbox_email.calls
 
 
 async def test_a_job_that_runs_twice_still_sends_one_email(

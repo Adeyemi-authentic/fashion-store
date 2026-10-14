@@ -9,6 +9,7 @@ import hashlib
 import secrets
 import uuid
 from dataclasses import dataclass
+from datetime import timedelta
 
 from sqlalchemy import and_, delete, func, literal, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -282,3 +283,11 @@ async def remove_purchased(
         # Delete fully-bought lines first: lowering one to 0 would break CHECK (qty > 0).
         await session.execute(delete(CartItem).where(line, CartItem.qty <= qty))
         await session.execute(update(CartItem).where(line).values(qty=CartItem.qty - qty))
+
+
+async def delete_idle_guest_carts(session: AsyncSession, idle_for: timedelta) -> int:
+    """Guest carts nobody has touched for a while. Account carts are kept. Doesn't commit."""
+    result = await session.execute(
+        delete(Cart).where(Cart.customer_id.is_(None), Cart.updated_at < func.now() - idle_for)
+    )
+    return result.rowcount  # type: ignore[attr-defined,no-any-return]

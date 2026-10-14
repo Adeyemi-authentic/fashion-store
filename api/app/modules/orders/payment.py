@@ -27,12 +27,21 @@ async def _items(session: AsyncSession, order_id: uuid.UUID) -> list[tuple[uuid.
     return [(v, q) for v, q in rows]
 
 
+LOW_STOCK = 3  # units left at which the admin is told
+
+
 async def _after_paid(
     session: AsyncSession, order: Order, items: list[tuple[uuid.UUID, int]]
 ) -> None:
     if order.cart_id:
         await remove_purchased(session, order.cart_id, items)
     await enqueue(session, "order_confirmation_email", {"order_id": str(order.id)})
+    # Alert once, on the sale that crosses the line, not on every sale below it.
+    for variant_id, available, qty in await inventory.levels_after_sale(session, items):
+        if available <= LOW_STOCK < available + qty:
+            await enqueue(
+                session, "low_stock_alert", {"variant_id": str(variant_id), "available": available}
+            )
 
 
 async def _refund(session: AsyncSession, order: Order, charge: Charge, reason: str) -> None:
@@ -109,7 +118,8 @@ async def apply_successful_charge(session: AsyncSession, charge: Charge) -> Outc
 async def expire_overdue_orders(session: AsyncSession, limit: int = 100) -> int:
     """Tidy-up job (Phase 5 schedules it): pending orders whose holds have run out become
     `expired` and their holds are released. Correctness never waits for this: availability
-    already ignores expired holds. Commits; returns how many orders it expired."""
+    already ignores expired holds. Doesn't commit (the job commits it together with its done
+    mark); returns how many orders it expired."""
     from app.modules.orders.models import Reservation
 
     overdue = (
@@ -134,7 +144,6 @@ async def expire_overdue_orders(session: AsyncSession, limit: int = 100) -> int:
         order = await lock_order(session, order_id)
         await inventory.release_order_holds(session, order_id)
         await transition(session, order, "expired")
-    await session.commit()
     return len(ids)
 
 

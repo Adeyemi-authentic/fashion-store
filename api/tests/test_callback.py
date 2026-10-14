@@ -83,7 +83,11 @@ async def test_callback_pays_before_the_webhook_and_the_webhook_is_then_a_no_op(
     )
     assert late.json()["result"] == "already_handled"
     assert await on_hand(session, a) == 3  # sold once
-    emails = (await session.execute(select(OutboxJob.type))).scalars().all()
+    emails = (
+        (await session.execute(select(OutboxJob.type).where(OutboxJob.type != "low_stock_alert")))
+        .scalars()
+        .all()
+    )
     assert list(emails) == ["order_confirmation_email"]
 
 

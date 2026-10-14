@@ -279,3 +279,14 @@ __all__ = [
     "reserved_mismatches",
     "sell_without_hold",
 ]
+
+
+async def levels_after_sale(
+    session: AsyncSession, items: Items
+) -> list[tuple[uuid.UUID, int, int]]:
+    """(variant_id, available now, qty just sold) for each sold variant."""
+    merged = dict(_merge(items))
+    rows = await session.execute(
+        select(Variant.id, available_qty()).where(Variant.id.in_(list(merged)))
+    )
+    return [(vid, max(0, int(avail)), merged[vid]) for vid, avail in rows]

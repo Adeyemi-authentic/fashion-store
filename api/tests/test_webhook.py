@@ -83,7 +83,10 @@ async def status(session: AsyncSession, order_id: str) -> Order:
 
 
 async def jobs(session: AsyncSession) -> list[str]:
-    return sorted((await session.execute(select(OutboxJob.type))).scalars())
+    """Jobs about orders and payments. Low-stock alerts are tested on their own
+    (test_schedule.py); selling 2 of the fixture's 5 units crosses that line."""
+    rows = await session.execute(select(OutboxJob.type).where(OutboxJob.type != "low_stock_alert"))
+    return sorted(rows.scalars())
 
 
 async def expire(session: AsyncSession, order_id: str) -> None:
@@ -243,6 +246,7 @@ async def test_late_payment_after_expiry_job_with_stock_left(
     out = await checkout(client, (a, 1))
     await expire(session, out["order_id"])
     assert await expire_overdue_orders(session) == 1
+    await session.commit()
     assert (await status(session, out["order_id"])).status == "expired"
     assert await stock(session, a) == (5, 0)  # hold released by the job
 
@@ -318,6 +322,7 @@ async def test_expiry_job_only_touches_overdue_pending_orders(
     await expire(session, overdue["order_id"])
 
     assert await expire_overdue_orders(session) == 1
+    await session.commit()
     assert (await status(session, overdue["order_id"])).status == "expired"
     assert (await status(session, fresh["order_id"])).status == "pending_payment"
     assert (await status(session, paid["order_id"])).status == "paid"
@@ -325,7 +330,9 @@ async def test_expiry_job_only_touches_overdue_pending_orders(
 
     async def run_job() -> int:
         async with get_sessionmaker()() as s:
-            return await expire_overdue_orders(s)
+            n = await expire_overdue_orders(s)
+            await s.commit()
+            return n
 
     await expire(session, fresh["order_id"])
     assert sorted(await asyncio.gather(run_job(), run_job())) == [
