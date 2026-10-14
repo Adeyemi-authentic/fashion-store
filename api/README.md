@@ -15,6 +15,29 @@ uv run lint-imports                       # module boundaries (ADR-001)
 uv run python -m scripts.make_admin EMAIL # the only way to grant the admin role
 ```
 
+## Background jobs (outbox worker, ADR-002)
+
+The worker runs inside the API process by default (`WORKER_IN_API=true`, the free-tier plan). To run it separately:
+
+```bash
+uv run python -m app.worker_main      # SIGTERM / Ctrl-C finish the job in progress, then stop
+```
+
+Jobs: order confirmation, late-payment apology, admin alerts, low-stock alert, Paystack refunds, and two scheduled jobs (expire holds every minute, clean-up hourly). Each job runs **at least once**, and each side effect carries its own idempotency key (emails: `job-<id>`; refunds: check Paystack for an existing refund first). After 6 failed attempts a job is `dead` and an admin is alerted. With no `RESEND_API_KEY`, emails are written to `api/.emails/`.
+
+Inspect the queue: `SELECT type, status, attempts, last_error FROM outbox_jobs ORDER BY id DESC LIMIT 20;` or `GET /metrics`.
+
+## Observability
+
+- **Logs:** JSON lines with `request_id` on every line (from the storefront proxy's `X-Request-ID`, echoed in every response). Jobs carry the id of the request that created them.
+- **`GET /metrics`:** Prometheus. Request latency by route, jobs by outcome, queue depth by status, the oldest due job's age, catalog cache hits. Set `METRICS_TOKEN` in production.
+- **Sentry:** set `SENTRY_DSN`. Dead jobs are logged as errors.
+
+## Rate limits and caching
+
+- Checkout, login and sign-up: 10/min per IP and per signed-in session (429 + `Retry-After`). The client IP comes from `X-Forwarded-For` only when `X-Proxy-Auth` matches `PROXY_SHARED_SECRET` (set the same value for the storefront).
+- Product lists, product detail, categories and facets: in-process cache, 60 s, cleared by any admin write. Live stock is `GET /products/{slug}/stock` (never cached).
+
 Run uvicorn with `--timeout-keep-alive 75` (here and in production). Its default is 5 s. The
 Next.js `/api` proxy reuses idle connections, and if uvicorn closes one just as the proxy sends on
 it, the browser gets a 500 "socket hang up" (ECONNRESET). The server's keep-alive must outlast the
@@ -38,7 +61,8 @@ tests/
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/products` | filters: `category`, `min_price_kobo`, `max_price_kobo`, `size`, `colour`, `in_stock`; `sort`: `newest`, `price_asc`, `price_desc`, `name`; `limit` (1–60); `cursor` |
-| GET | `/products/{slug}` | variants with live `available` count, images, attributes |
+| GET | `/products/{slug}` | variants, images, attributes; cached up to 60 s (stock numbers included) |
+| GET | `/products/{slug}/stock` | live `available` per variant, never cached |
 | GET | `/categories` | slug + product count |
 | GET | `/facets` | sizes, colours and price range on sale; optional `category` |
 | GET | `/cart` | the cart for the `cart_token` cookie (empty if none; never creates one) |
@@ -53,3 +77,4 @@ tests/
 | POST | `/payments/webhook` | Paystack only, HMAC-SHA512 signed; 401 only for a bad signature, otherwise 200 |
 | * | `/admin/...` | products, variants, stock deltas, orders, cancel; 401 visitors / 403 customers |
 | GET | `/health` | checks the database |
+| GET | `/metrics` | Prometheus metrics (`Bearer METRICS_TOKEN` when set) |
