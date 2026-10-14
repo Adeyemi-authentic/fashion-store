@@ -27,6 +27,14 @@ class OutboxJob(Base):
     __table_args__ = (
         CheckConstraint("status IN ('queued', 'running', 'done', 'dead')", name="status_valid"),
         Index("ix_outbox_jobs_ready", "run_after", postgresql_where=text("status = 'queued'")),
+        # Scheduled jobs re-queue themselves; this keeps it to one live copy even if two
+        # workers both try to schedule the next run.
+        Index(
+            "uq_outbox_jobs_singleton_active",
+            "singleton_key",
+            unique=True,
+            postgresql_where=text("status IN ('queued', 'running')"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -37,6 +45,7 @@ class OutboxJob(Base):
     run_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    singleton_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = created_at()
     updated_at: Mapped[datetime] = updated_at()
 
