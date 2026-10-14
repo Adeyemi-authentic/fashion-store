@@ -11,7 +11,7 @@ Each rule says what a shopper typing that query would accept. For example, "wedd
 
 The script applies the rules to the catalog's **structured attributes** (category, type, gender, occasion, colours, price). It never looks at search output, so the labels can't drift towards what the search returns.
 
-Only visible products count. The headwear category has no images yet, so it is hidden, which is why no query is about filas or turbans. Stock is ignored, because a sold-out product is still a correct answer; the search shows it lower down, it doesn't hide it.
+Only visible products count. The headwear category has no images yet, so it is hidden, which is why no query is about filas or turbans. Stock is ignored, because a sold-out product is still a correct answer: the search shows it with a "sold out" label rather than hiding it.
 
 ## Mix of queries
 | Kind | Count | Tests |

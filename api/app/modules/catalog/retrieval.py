@@ -1,4 +1,4 @@
-"""Catalog reads and writes for search and recommendations: product embeddings.
+"""Catalog reads and writes for search and recommendations: embeddings and candidates.
 
 Re-exported by catalog.service, the module's public interface (ADR-001). The search module
 does the ranking logic; the SQL that touches catalog tables stays here.
@@ -8,10 +8,11 @@ import hashlib
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import select, update
+from sqlalchemy import Select, Text, cast, exists, func, select, update
+from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.catalog.models import Product
+from app.modules.catalog.models import Product, Variant
 
 
 def embedding_text(p: Product) -> str:
@@ -78,3 +79,117 @@ async def save_embedding(
         .values(embedding=vector, embedding_hash=expected_hash)
     )
     return True
+
+
+# ---------------------------------------------------------------------------------------------
+# Search candidates. Each returns active product ids, best first. The search module merges
+# the lists; filters are applied here, inside both queries, so neither list wastes slots on
+# products the filters would remove later.
+
+
+@dataclass(frozen=True)
+class SearchFilters:
+    category: str | None = None
+    min_price_kobo: int | None = None
+    max_price_kobo: int | None = None
+    gender: str | None = None  # "women" or "men"; unisex products match both
+    occasion: str | None = None
+    colours: tuple[str, ...] = ()  # any of these (variant colours, exact names)
+
+    def is_empty(self) -> bool:
+        return self == SearchFilters()
+
+
+def _filtered(stmt: Select, f: SearchFilters) -> Select:  # type: ignore[type-arg]
+    stmt = stmt.where(Product.status == "active")
+    if f.category:
+        stmt = stmt.where(Product.category == f.category)
+    if f.min_price_kobo is not None:
+        stmt = stmt.where(Product.base_price_kobo >= f.min_price_kobo)
+    if f.max_price_kobo is not None:
+        stmt = stmt.where(Product.base_price_kobo <= f.max_price_kobo)
+    if f.gender:
+        stmt = stmt.where(Product.attributes["gender"].astext.in_([f.gender, "unisex"]))
+    if f.occasion:
+        stmt = stmt.where(Product.attributes["occasion"].contains([f.occasion]))
+    if f.colours:
+        stmt = stmt.where(
+            exists().where(Variant.product_id == Product.id, Variant.colour.in_(f.colours))
+        )
+    return stmt
+
+
+def _tsquery(text: str, mode: str):  # type: ignore[no-untyped-def]
+    """`and`: every word must match (websearch syntax, like most shop search boxes).
+    `or`: any word may match, and ranking rewards matching more of them."""
+    if mode == "and":
+        return func.websearch_to_tsquery("english", text)
+    return cast(func.replace(cast(func.plainto_tsquery("english", text), Text), "&", "|"), TSQUERY)
+
+
+async def keyword_candidates(
+    session: AsyncSession, text: str, f: SearchFilters, limit: int, mode: str = "and"
+) -> list[uuid.UUID]:
+    query = _tsquery(text, mode)
+    stmt = (
+        select(Product.id)
+        .where(Product.search_tsv.op("@@")(query))
+        # Ties break by slug, not id: ids are random, slugs are the same in every database,
+        # so the eval gives the same answer on every run.
+        .order_by(func.ts_rank_cd(Product.search_tsv, query).desc(), Product.slug)
+        .limit(limit)
+    )
+    return list((await session.execute(_filtered(stmt, f))).scalars())
+
+
+async def vector_candidates(
+    session: AsyncSession, vector: list[float], f: SearchFilters, limit: int
+) -> list[uuid.UUID]:
+    """Exact nearest neighbours by cosine distance. No ANN index: at ~150 products a full
+    scan takes about a millisecond and is exact (an HNSW index pays off in the tens of
+    thousands, and filtering after an approximate scan can return too few rows)."""
+    stmt = (
+        select(Product.id)
+        .where(Product.embedding.is_not(None))
+        .order_by(Product.embedding.cosine_distance(vector), Product.slug)
+        .limit(limit)
+    )
+    return list((await session.execute(_filtered(stmt, f))).scalars())
+
+
+@dataclass(frozen=True)
+class SearchVocabulary:
+    """The values a search filter can take: only ones some visible product has."""
+
+    categories: tuple[str, ...]
+    occasions: tuple[str, ...]
+    colours: tuple[str, ...]
+
+    def fingerprint(self) -> str:
+        """Stable across processes (Python's hash() of strings is not)."""
+        return hashlib.sha256(repr(self).encode()).hexdigest()[:12]
+
+
+async def search_vocabulary(session: AsyncSession) -> SearchVocabulary:
+    active = Product.status == "active"
+    categories = (
+        await session.execute(select(Product.category).where(active).distinct())
+    ).scalars()
+    occasions = (
+        await session.execute(
+            select(func.jsonb_array_elements_text(Product.attributes["occasion"]))
+            .where(active)
+            .distinct()
+        )
+    ).scalars()
+    colours = (
+        await session.execute(
+            select(Variant.colour)
+            .join(Product, Product.id == Variant.product_id)
+            .where(active)
+            .distinct()
+        )
+    ).scalars()
+    return SearchVocabulary(
+        tuple(sorted(categories)), tuple(sorted(occasions)), tuple(sorted(colours))
+    )

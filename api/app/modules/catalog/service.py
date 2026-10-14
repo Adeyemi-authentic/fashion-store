@@ -14,9 +14,14 @@ from sqlalchemy.orm import selectinload
 from app.modules.catalog.models import Product, ProductImage, Variant
 from app.modules.catalog.retrieval import (  # noqa: F401  (public interface)
     EmbeddingInput,
+    SearchFilters,
+    SearchVocabulary,
     embedding_text,
+    keyword_candidates,
     save_embedding,
+    search_vocabulary,
     stale_embeddings,
+    vector_candidates,
 )
 from app.modules.catalog.schemas import (
     AdminProductOut,
@@ -164,6 +169,22 @@ def _card(product: Product, in_stock: bool) -> ProductCard:
         in_stock=bool(in_stock),
         image=_first_image(product.images),
     )
+
+
+async def cards_by_id(session: AsyncSession, ids: list[uuid.UUID]) -> list[ProductCard]:
+    """Cards for these active products, in the order given (search and recommendations
+    decide the order; this only fills in the details)."""
+    if not ids:
+        return []
+    rows = (
+        await session.execute(
+            select(Product, _in_stock_clause().label("in_stock"))
+            .where(Product.id.in_(ids), Product.status == "active")
+            .options(selectinload(Product.images))
+        )
+    ).all()
+    by_id = {p.id: _card(p, in_stock) for p, in_stock in rows}
+    return [by_id[i] for i in ids if i in by_id]
 
 
 async def get_product(session: AsyncSession, slug: str) -> ProductDetail | None:

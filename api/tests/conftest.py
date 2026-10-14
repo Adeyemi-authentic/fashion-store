@@ -247,12 +247,17 @@ def generous_rate_limits(monkeypatch: pytest.MonkeyPatch, request: pytest.Fixtur
 
     monkeypatch.setattr(get_settings(), "rate_limit_checkout_per_min", 10_000)
     monkeypatch.setattr(get_settings(), "rate_limit_login_per_min", 10_000)
+    monkeypatch.setattr(get_settings(), "rate_limit_search_per_min", 10_000)
 
 
 @pytest.fixture(autouse=True)
 def empty_catalog_cache() -> None:
     """The catalog cache lives in the process; one test's cached reads must not leak into
     the next test's view of the data."""
+    from app.modules.search.service import query_vectors
+    from app.modules.search.understand import understood_cache
     from app.platform.cache import catalog_cache
 
     catalog_cache.clear()
+    query_vectors.clear()
+    understood_cache.clear()

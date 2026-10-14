@@ -23,3 +23,4 @@ next-env.d.ts
 .vercel/
 coverage/
 scripts/out/
+evals/search/.cache/

@@ -19,6 +19,7 @@ from app.modules.cart.router import router as cart_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.orders.router import router as orders_router
 from app.modules.payments.router import router as payments_router
+from app.modules.search.router import router as search_router
 from app.platform.jobs import register_all
 from app.platform.logging import configure_logging
 from app.platform.metrics import observe_request
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(orders_router)
     app.include_router(payments_router)
+    app.include_router(search_router)
 
     @app.get("/metrics", tags=["ops"], include_in_schema=False)
     async def metrics(

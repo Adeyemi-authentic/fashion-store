@@ -89,3 +89,4 @@ def limit(name: str, per_minute: Callable[[], int]) -> Callable[[Request], Await
 
 checkout_limit = limit("checkout", lambda: get_settings().rate_limit_checkout_per_min)
 login_limit = limit("login", lambda: get_settings().rate_limit_login_per_min)
+search_limit = limit("search", lambda: get_settings().rate_limit_search_per_min)
