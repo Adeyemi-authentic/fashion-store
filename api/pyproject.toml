@@ -5,9 +5,11 @@ description = "FlyFit API: FastAPI app split into modules, plus the outbox worke
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.0",
+    "anthropic>=1.13.0",
     "argon2-cffi>=25.1.0",
     "email-validator>=2.3.0",
     "fastapi>=0.143.0",
+    "httpx>=0.28.1",
     "pgvector>=0.5.1",
     "prometheus-client>=0.26.0",
     "psycopg[binary]>=3.2",
@@ -36,7 +38,6 @@ select = ["E", "F", "I", "B", "UP", "ASYNC"]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "import-linter>=2.15",
     "mypy>=2.4.0",
     "pgserver>=0.1.4",
@@ -73,6 +74,22 @@ allow_indirect_imports = true
 source_modules = ["app.modules.cart"]
 forbidden_modules = [
     "app.modules.catalog.models",
+    "app.modules.orders.inventory",
+    "app.modules.orders.models",
+    "app.modules.accounts.models",
+    "app.modules.payments.models",
+    "app.modules.assistant.models",
+]
+
+[[tool.importlinter.contracts]]
+name = "Search uses other modules only through their service"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["app.modules.search"]
+forbidden_modules = [
+    "app.modules.catalog.models",
+    "app.modules.catalog.retrieval",
+    "app.modules.cart.models",
     "app.modules.orders.inventory",
     "app.modules.orders.models",
     "app.modules.accounts.models",

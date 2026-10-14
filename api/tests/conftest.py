@@ -56,6 +56,10 @@ def database_url(make_database) -> str:  # type: ignore[no-untyped-def]
     command.upgrade(alembic_config(url), "head")
     os.environ["DATABASE_URL"] = url
     os.environ["DATABASE_URL_DIRECT"] = url
+    # Never call the real AI APIs from tests, even with keys in .env: empty keys select the
+    # local hash embedder and switch LLM calls off. Tests that need an LLM install a fake.
+    os.environ["VOYAGE_API_KEY"] = ""
+    os.environ["ANTHROPIC_API_KEY"] = ""
     from app.config import get_settings
 
     get_settings.cache_clear()
@@ -66,10 +70,13 @@ def database_url(make_database) -> str:  # type: ignore[no-untyped-def]
 async def seeded(database_url: str) -> AsyncIterator[int]:
     """Number of active (visible) products after seeding."""
     from app.db import dispose_engine, get_sessionmaker
+    from app.modules.search.embeddings import refresh_embeddings
     from scripts.seed_catalog import seed
 
     async with get_sessionmaker()() as session:
         result = await seed(session)
+        await refresh_embeddings(session)
+        await session.commit()
     yield result.active
     await dispose_engine()
 

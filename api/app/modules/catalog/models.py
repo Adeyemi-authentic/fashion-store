@@ -19,7 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.shared.base import Base, created_at, updated_at, uuid_pk
 
 PRODUCT_STATUSES = ("draft", "active", "archived")
-EMBEDDING_DIM = 1024  # Voyage voyage-3.5 default output size
+EMBEDDING_DIM = 1024  # Voyage voyage-4 default output size
 
 
 class Product(Base):
@@ -47,6 +47,9 @@ class Product(Base):
     # pipeline may only make claims that appear here.
     attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    # Hash of the model name + the text the embedding was made from. A different hash means
+    # the embedding is stale (the product text or the embedding model changed).
+    embedding_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     search_tsv: Mapped[str] = mapped_column(
         TSVECTOR,
         Computed(

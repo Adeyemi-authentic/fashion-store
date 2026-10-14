@@ -54,4 +54,5 @@ async def low_stock_alert(session: AsyncSession, job: Job) -> None:
 def register_all() -> None:
     """Import every module that defines handlers (decorators register on import)."""
     from app.modules.orders import jobs as _orders  # noqa: F401
+    from app.modules.search import jobs as _search  # noqa: F401
     from app.platform import schedule as _schedule  # noqa: F401

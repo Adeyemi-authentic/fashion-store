@@ -12,6 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.catalog.models import Product, ProductImage, Variant
+from app.modules.catalog.retrieval import (  # noqa: F401  (public interface)
+    EmbeddingInput,
+    embedding_text,
+    save_embedding,
+    stale_embeddings,
+)
 from app.modules.catalog.schemas import (
     AdminProductOut,
     AdminProductPage,
@@ -31,6 +37,7 @@ from app.modules.catalog.schemas import (
     VariantOut,
 )
 from app.modules.orders.availability import available_qty
+from app.platform.outbox import enqueue
 from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 MAX_PAGE_SIZE = 60
@@ -301,6 +308,10 @@ async def get_variant_summaries(
 # its starting stock (written by orders.inventory) land together or not at all.
 
 
+# Fields that feed embedding_text(): changing one makes the product's embedding stale.
+EMBEDDED_FIELDS = {"name", "description", "category", "attributes"}
+
+
 class ProductNotFound(LookupError):
     pass
 
@@ -405,6 +416,8 @@ async def create_product(
     if data.status == "active":
         await _check_publishable(session, product.id)
         product.status = "active"
+    # Same transaction as the product: it can't exist without its embedding job (ADR-002).
+    await enqueue(session, "embed_product", {"product_id": str(product.id)})
     return product.id, [
         (v.id, d.stock_on_hand) for v, d in zip(variants, data.variants, strict=True)
     ]
@@ -430,6 +443,8 @@ async def update_product(
         product.status = data.status
     product.updated_at = func.now()  # type: ignore[assignment]
     await session.flush()
+    if EMBEDDED_FIELDS & changes.keys():
+        await enqueue(session, "embed_product", {"product_id": str(product.id)})
     return product.slug
 
 

@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     worker_in_api: bool = True
     worker_lease_seconds: float = 60.0
     worker_poll_seconds: float = 1.0
+    # AI (Phase 6). Empty keys: a local stand-in embedder and no LLM query parsing, so the
+    # app still runs; tests always use fakes and never call these APIs.
+    anthropic_api_key: str = ""
+    llm_model: str = "claude-haiku-5-5"
+    voyage_api_key: str = ""
+    embedding_model: str = "voyage-4"  # 1024 dimensions, matching products.embedding
+    rate_limit_search_per_min: int = 30
     log_level: str = "INFO"
     sentry_dsn: str = ""  # empty: Sentry off
     metrics_token: str = ""  # set in production: /metrics then needs "Bearer <token>"

@@ -20,6 +20,7 @@ JOB_TYPES = frozenset(
         "expire_holds",
         "low_stock_alert",
         "cleanup",
+        "embed_product",
         "test_job",  # used only by the worker tests
     }
 )
