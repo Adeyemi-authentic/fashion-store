@@ -97,7 +97,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </header>
           <main className="flex-1">{children}</main>
           <footer className="mt-16 border-t border-line">
-            <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted">
+            {/* Extra bottom padding: the assistant button floats over the page's last lines. */}
+            <div className="mx-auto max-w-6xl px-4 pb-24 pt-8 text-sm text-muted">
               <nav aria-label="Help" className="mb-4 flex flex-wrap gap-x-5 gap-y-2">
                 {POLICY_PAGES.map((p) => (
                   <Link key={p.slug} href={`/help/${p.slug}`} className="hover:text-ink">

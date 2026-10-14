@@ -106,12 +106,14 @@ export function Assistant() {
           ref={launcher}
           type="button"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 z-30 flex h-12 items-center gap-2 rounded-full bg-ink px-4 text-sm font-medium text-cream shadow-lg hover:bg-indigo"
+          aria-label={`Ask ${BRAND}`}
+          // A round icon on phones, so it covers as little of the page as possible.
+          className="fixed bottom-4 right-4 z-30 flex h-12 w-12 items-center justify-center gap-2 rounded-full bg-ink text-sm font-medium text-cream shadow-lg hover:bg-indigo sm:w-auto sm:px-4"
         >
           <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M4 5h16v11H9l-5 4V5Z" />
           </svg>
-          Ask {BRAND}
+          <span className="hidden sm:inline">Ask {BRAND}</span>
         </button>
       )}
 
