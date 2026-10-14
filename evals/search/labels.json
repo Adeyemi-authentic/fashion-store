@@ -1,0 +1,452 @@
+{
+ "q01": [
+  "ankara-akoka-wrap-dress",
+  "ankara-badagry-wrap-dress",
+  "ankara-lekki-sunset-wrap-dress"
+ ],
+ "q02": [
+  "adire-agege-kaftan-dress",
+  "adire-festac-kaftan-dress",
+  "adire-ilaje-kaftan-dress",
+  "adire-oyin-kaftan-dress"
+ ],
+ "q03": [
+  "agbada-kaftans-badagry-grand-boubou",
+  "agbada-kaftans-epe-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada-2",
+  "agbada-kaftans-obalende-grand-boubou",
+  "agbada-kaftans-owambe-grand-boubou",
+  "agbada-kaftans-owambe-three-piece-agbada",
+  "agbada-kaftans-palm-frond-grand-boubou"
+ ],
+ "q04": [
+  "aso-oke-eko-nights-gele-and-ipele-set",
+  "aso-oke-ilaje-gele-and-ipele-set",
+  "aso-oke-ireti-gele-and-ipele-set",
+  "aso-oke-market-day-gele-and-ipele-set"
+ ],
+ "q05": [
+  "aso-oke-calabar-bridal-set",
+  "aso-oke-imole-bridal-set",
+  "aso-oke-palm-frond-bridal-set"
+ ],
+ "q06": [
+  "ready-to-wear-ayo-linen-shirt",
+  "ready-to-wear-ilaje-linen-shirt",
+  "ready-to-wear-imole-linen-shirt",
+  "ready-to-wear-shitta-linen-shirt"
+ ],
+ "q07": [
+  "ready-to-wear-badagry-blazer",
+  "ready-to-wear-calabar-blazer",
+  "ready-to-wear-harmattan-blazer",
+  "ready-to-wear-owambe-blazer"
+ ],
+ "q08": [
+  "aso-oke-ayo-buba-and-sokoto",
+  "aso-oke-eko-nights-buba-and-sokoto",
+  "aso-oke-ireti-buba-and-sokoto",
+  "aso-oke-yaba-buba-and-sokoto"
+ ],
+ "q09": [
+  "aso-oke-badagry-iro-and-buba-set",
+  "aso-oke-ikoyi-iro-and-buba-set",
+  "aso-oke-shitta-iro-and-buba-set",
+  "aso-oke-sunburst-iro-and-buba-set"
+ ],
+ "q10": [
+  "ankara-ayo-maxi-skirt",
+  "ankara-eko-nights-maxi-skirt",
+  "ankara-imole-maxi-skirt",
+  "ankara-obalende-maxi-skirt"
+ ],
+ "q11": [
+  "adire-agege-wide-leg-trousers",
+  "adire-lagoon-wide-leg-trousers",
+  "adire-market-day-wide-leg-trousers",
+  "adire-sunburst-wide-leg-trousers"
+ ],
+ "q12": [
+  "ready-to-wear-ilaje-slip-dress",
+  "ready-to-wear-imole-slip-dress",
+  "ready-to-wear-shitta-slip-dress",
+  "ready-to-wear-sunburst-slip-dress"
+ ],
+ "q13": [
+  "agbada-kaftans-agege-dashiki-kaftan",
+  "agbada-kaftans-akoka-dashiki-kaftan",
+  "agbada-kaftans-ife-dashiki-kaftan",
+  "agbada-kaftans-ireti-dashiki-kaftan"
+ ],
+ "q14": [
+  "adire-agege-scarf",
+  "adire-badagry-scarf",
+  "adire-ilaje-scarf",
+  "adire-ireti-scarf"
+ ],
+ "q15": [
+  "accessories-akoka-hand-fan",
+  "accessories-ilaje-hand-fan"
+ ],
+ "q16": [
+  "ready-to-wear-calabar-cargo-trousers",
+  "ready-to-wear-ikoyi-cargo-trousers",
+  "ready-to-wear-lagoon-cargo-trousers",
+  "ready-to-wear-market-day-cargo-trousers"
+ ],
+ "q17": [
+  "ready-to-wear-badagry-oversized-tee",
+  "ready-to-wear-calabar-oversized-tee",
+  "ready-to-wear-imole-oversized-tee",
+  "ready-to-wear-palm-frond-oversized-tee"
+ ],
+ "q18": [
+  "ankara-akoka-peplum-top",
+  "ankara-festac-peplum-top",
+  "ankara-yaba-peplum-top"
+ ],
+ "q19": [
+  "accessories-ilaje-woven-clutch",
+  "accessories-imole-woven-clutch",
+  "accessories-lagoon-woven-clutch"
+ ],
+ "q20": [
+  "accessories-harmattan-brass-cuff",
+  "accessories-lekki-sunset-brass-cuff"
+ ],
+ "q21": [
+  "aso-oke-eko-nights-gele-and-ipele-set",
+  "aso-oke-ilaje-gele-and-ipele-set",
+  "aso-oke-ireti-gele-and-ipele-set",
+  "aso-oke-market-day-gele-and-ipele-set"
+ ],
+ "q22": [
+  "aso-oke-ife-waistcoat",
+  "aso-oke-market-day-waistcoat",
+  "aso-oke-ojuelegba-waistcoat"
+ ],
+ "q23": [
+  "agbada-kaftans-agege-senator-kaftan",
+  "agbada-kaftans-ikoyi-senator-kaftan",
+  "agbada-kaftans-shitta-senator-kaftan",
+  "agbada-kaftans-yaba-senator-kaftan"
+ ],
+ "q24": [
+  "accessories-banana-island-leather-tote",
+  "accessories-eko-nights-leather-tote",
+  "accessories-ikoyi-leather-tote",
+  "accessories-ilaje-woven-clutch",
+  "accessories-imole-woven-clutch",
+  "accessories-lagoon-woven-clutch"
+ ],
+ "q25": [
+  "adire-agege-kaftan-dress",
+  "adire-agege-scarf",
+  "adire-agege-wide-leg-trousers",
+  "adire-akoka-button-up-shirt",
+  "adire-badagry-scarf",
+  "adire-banana-island-button-up-shirt",
+  "adire-eko-nights-boubou",
+  "adire-festac-kaftan-dress",
+  "adire-ife-two-piece-set",
+  "adire-ikoyi-boubou",
+  "adire-ilaje-kaftan-dress",
+  "adire-ilaje-scarf",
+  "adire-ireti-scarf",
+  "adire-lagoon-wide-leg-trousers",
+  "adire-market-day-wide-leg-trousers",
+  "adire-obalende-boubou",
+  "adire-owambe-two-piece-set",
+  "adire-oyin-kaftan-dress",
+  "adire-shitta-boubou",
+  "adire-shitta-button-up-shirt",
+  "adire-sunburst-wide-leg-trousers",
+  "adire-tarkwa-button-up-shirt",
+  "adire-tarkwa-two-piece-set",
+  "adire-yaba-two-piece-set"
+ ],
+ "q26": [
+  "aso-oke-ayo-buba-and-sokoto",
+  "aso-oke-badagry-iro-and-buba-set",
+  "aso-oke-calabar-bridal-set",
+  "aso-oke-eko-nights-buba-and-sokoto",
+  "aso-oke-eko-nights-gele-and-ipele-set",
+  "aso-oke-ife-waistcoat",
+  "aso-oke-ikoyi-iro-and-buba-set",
+  "aso-oke-ilaje-gele-and-ipele-set",
+  "aso-oke-imole-bridal-set",
+  "aso-oke-ireti-buba-and-sokoto",
+  "aso-oke-ireti-gele-and-ipele-set",
+  "aso-oke-market-day-gele-and-ipele-set",
+  "aso-oke-market-day-waistcoat",
+  "aso-oke-ojuelegba-waistcoat",
+  "aso-oke-palm-frond-bridal-set",
+  "aso-oke-shitta-iro-and-buba-set",
+  "aso-oke-sunburst-iro-and-buba-set",
+  "aso-oke-yaba-buba-and-sokoto"
+ ],
+ "q27": [
+  "adire-ife-two-piece-set",
+  "adire-owambe-two-piece-set",
+  "adire-tarkwa-two-piece-set",
+  "adire-yaba-two-piece-set",
+  "ankara-agege-two-piece-set",
+  "ankara-banana-island-two-piece-set",
+  "ankara-ife-two-piece-set",
+  "ankara-market-day-two-piece-set",
+  "aso-oke-badagry-iro-and-buba-set",
+  "aso-oke-ikoyi-iro-and-buba-set",
+  "aso-oke-shitta-iro-and-buba-set",
+  "aso-oke-sunburst-iro-and-buba-set",
+  "ready-to-wear-banana-island-co-ord-set",
+  "ready-to-wear-ireti-co-ord-set",
+  "ready-to-wear-lagoon-co-ord-set",
+  "ready-to-wear-owambe-co-ord-set"
+ ],
+ "q28": [
+  "ankara-harmattan-bomber-jacket",
+  "ankara-lekki-sunset-bomber-jacket",
+  "ankara-palm-frond-bomber-jacket",
+  "ankara-tarkwa-bomber-jacket",
+  "ready-to-wear-badagry-blazer",
+  "ready-to-wear-calabar-blazer",
+  "ready-to-wear-harmattan-blazer",
+  "ready-to-wear-owambe-blazer"
+ ],
+ "q29": [
+  "accessories-badagry-beaded-necklace",
+  "accessories-banana-island-beaded-necklace",
+  "accessories-harmattan-brass-cuff",
+  "accessories-ikoyi-coral-bead-set",
+  "accessories-ikoyi-coral-bead-set-2",
+  "accessories-lekki-sunset-brass-cuff",
+  "accessories-shitta-beaded-necklace",
+  "accessories-tarkwa-coral-bead-set"
+ ],
+ "q30": [
+  "aso-oke-calabar-bridal-set",
+  "aso-oke-imole-bridal-set",
+  "aso-oke-palm-frond-bridal-set"
+ ],
+ "q31": [
+  "agbada-kaftans-agege-senator-kaftan",
+  "agbada-kaftans-epe-three-piece-agbada",
+  "agbada-kaftans-ife-dashiki-kaftan",
+  "agbada-kaftans-ikoyi-senator-kaftan",
+  "agbada-kaftans-obalende-embroidered-kaftan",
+  "agbada-kaftans-obalende-grand-boubou",
+  "agbada-kaftans-owambe-grand-boubou",
+  "agbada-kaftans-owambe-three-piece-agbada",
+  "agbada-kaftans-palm-frond-grand-boubou",
+  "agbada-kaftans-yaba-senator-kaftan",
+  "aso-oke-calabar-bridal-set",
+  "aso-oke-eko-nights-buba-and-sokoto",
+  "aso-oke-eko-nights-gele-and-ipele-set",
+  "aso-oke-imole-bridal-set",
+  "aso-oke-ireti-buba-and-sokoto",
+  "aso-oke-market-day-waistcoat",
+  "aso-oke-ojuelegba-waistcoat",
+  "aso-oke-palm-frond-bridal-set",
+  "aso-oke-sunburst-iro-and-buba-set"
+ ],
+ "q32": [
+  "agbada-kaftans-agege-dashiki-kaftan",
+  "agbada-kaftans-akoka-dashiki-kaftan",
+  "agbada-kaftans-ayo-embroidered-kaftan",
+  "agbada-kaftans-ilaje-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada-2",
+  "agbada-kaftans-ireti-dashiki-kaftan",
+  "agbada-kaftans-obalende-embroidered-kaftan",
+  "agbada-kaftans-obalende-grand-boubou",
+  "aso-oke-ayo-buba-and-sokoto",
+  "aso-oke-badagry-iro-and-buba-set",
+  "aso-oke-calabar-bridal-set",
+  "aso-oke-eko-nights-buba-and-sokoto",
+  "aso-oke-eko-nights-gele-and-ipele-set",
+  "aso-oke-ife-waistcoat",
+  "aso-oke-ikoyi-iro-and-buba-set",
+  "aso-oke-ilaje-gele-and-ipele-set",
+  "aso-oke-imole-bridal-set",
+  "aso-oke-ireti-gele-and-ipele-set",
+  "aso-oke-market-day-gele-and-ipele-set",
+  "aso-oke-ojuelegba-waistcoat",
+  "aso-oke-palm-frond-bridal-set",
+  "aso-oke-shitta-iro-and-buba-set",
+  "aso-oke-sunburst-iro-and-buba-set",
+  "aso-oke-yaba-buba-and-sokoto"
+ ],
+ "q33": [
+  "agbada-kaftans-ayo-embroidered-kaftan",
+  "agbada-kaftans-badagry-grand-boubou",
+  "agbada-kaftans-epe-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada-2",
+  "agbada-kaftans-imole-embroidered-kaftan",
+  "agbada-kaftans-ireti-dashiki-kaftan",
+  "agbada-kaftans-shitta-senator-kaftan",
+  "agbada-kaftans-yaba-embroidered-kaftan"
+ ],
+ "q34": [
+  "adire-agege-kaftan-dress",
+  "adire-eko-nights-boubou",
+  "adire-festac-kaftan-dress",
+  "adire-ikoyi-boubou",
+  "adire-ilaje-kaftan-dress",
+  "adire-obalende-boubou",
+  "adire-oyin-kaftan-dress",
+  "adire-shitta-boubou",
+  "ankara-akoka-peplum-top",
+  "ankara-akoka-wrap-dress",
+  "ankara-ayo-maxi-skirt",
+  "ankara-badagry-wrap-dress",
+  "ankara-eko-nights-maxi-skirt",
+  "ankara-imole-maxi-skirt",
+  "ankara-market-day-two-piece-set",
+  "ankara-obalende-maxi-skirt",
+  "ankara-yaba-peplum-top",
+  "ready-to-wear-banana-island-co-ord-set",
+  "ready-to-wear-ilaje-slip-dress",
+  "ready-to-wear-imole-slip-dress",
+  "ready-to-wear-ireti-co-ord-set",
+  "ready-to-wear-lagoon-co-ord-set",
+  "ready-to-wear-owambe-co-ord-set",
+  "ready-to-wear-shitta-slip-dress",
+  "ready-to-wear-sunburst-slip-dress"
+ ],
+ "q35": [
+  "adire-akoka-button-up-shirt",
+  "adire-banana-island-button-up-shirt",
+  "adire-shitta-button-up-shirt",
+  "adire-tarkwa-button-up-shirt",
+  "ankara-akoka-short-sleeve-shirt",
+  "ankara-ilaje-short-sleeve-shirt",
+  "ankara-ilaje-short-sleeve-shirt-2",
+  "ankara-kola-short-sleeve-shirt",
+  "ready-to-wear-ayo-linen-shirt",
+  "ready-to-wear-ilaje-linen-shirt",
+  "ready-to-wear-imole-linen-shirt",
+  "ready-to-wear-shitta-linen-shirt"
+ ],
+ "q36": [
+  "agbada-kaftans-agege-dashiki-kaftan",
+  "agbada-kaftans-agege-senator-kaftan",
+  "agbada-kaftans-akoka-dashiki-kaftan",
+  "agbada-kaftans-badagry-grand-boubou",
+  "agbada-kaftans-ife-dashiki-kaftan",
+  "agbada-kaftans-ikoyi-senator-kaftan",
+  "agbada-kaftans-imole-embroidered-kaftan",
+  "agbada-kaftans-owambe-grand-boubou",
+  "agbada-kaftans-owambe-three-piece-agbada",
+  "agbada-kaftans-palm-frond-grand-boubou",
+  "agbada-kaftans-shitta-senator-kaftan",
+  "agbada-kaftans-yaba-embroidered-kaftan",
+  "agbada-kaftans-yaba-senator-kaftan",
+  "aso-oke-ayo-buba-and-sokoto",
+  "aso-oke-badagry-iro-and-buba-set",
+  "aso-oke-ife-waistcoat",
+  "aso-oke-ikoyi-iro-and-buba-set",
+  "aso-oke-ilaje-gele-and-ipele-set",
+  "aso-oke-ireti-buba-and-sokoto",
+  "aso-oke-ireti-gele-and-ipele-set",
+  "aso-oke-market-day-gele-and-ipele-set",
+  "aso-oke-market-day-waistcoat",
+  "aso-oke-shitta-iro-and-buba-set",
+  "aso-oke-yaba-buba-and-sokoto"
+ ],
+ "q37": [
+  "adire-agege-wide-leg-trousers",
+  "adire-lagoon-wide-leg-trousers",
+  "adire-market-day-wide-leg-trousers",
+  "adire-sunburst-wide-leg-trousers",
+  "ready-to-wear-bronze-tailored-trousers",
+  "ready-to-wear-ife-tailored-trousers",
+  "ready-to-wear-kola-tailored-trousers",
+  "ready-to-wear-oyin-tailored-trousers"
+ ],
+ "q38": [
+  "agbada-kaftans-ife-dashiki-kaftan"
+ ],
+ "q39": [
+  "accessories-akoka-hand-fan",
+  "accessories-harmattan-brass-cuff",
+  "accessories-ilaje-hand-fan",
+  "adire-badagry-scarf",
+  "adire-ilaje-scarf",
+  "adire-ireti-scarf",
+  "ready-to-wear-calabar-oversized-tee",
+  "ready-to-wear-imole-oversized-tee"
+ ],
+ "q40": [
+  "ankara-lekki-sunset-wrap-dress"
+ ],
+ "q41": [
+  "agbada-kaftans-ilaje-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada-2",
+  "agbada-kaftans-owambe-three-piece-agbada"
+ ],
+ "q42": [
+  "ankara-akoka-peplum-top",
+  "ankara-akoka-short-sleeve-shirt",
+  "ankara-festac-peplum-top",
+  "ankara-ilaje-short-sleeve-shirt-2",
+  "ankara-kola-short-sleeve-shirt",
+  "ankara-yaba-peplum-top"
+ ],
+ "q43": [
+  "agbada-kaftans-badagry-grand-boubou",
+  "agbada-kaftans-epe-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada-2",
+  "agbada-kaftans-owambe-grand-boubou",
+  "agbada-kaftans-owambe-three-piece-agbada"
+ ],
+ "q44": [
+  "aso-oke-eko-nights-buba-and-sokoto",
+  "aso-oke-eko-nights-gele-and-ipele-set",
+  "aso-oke-ireti-buba-and-sokoto",
+  "aso-oke-market-day-waistcoat",
+  "aso-oke-palm-frond-bridal-set",
+  "aso-oke-shitta-iro-and-buba-set",
+  "aso-oke-sunburst-iro-and-buba-set",
+  "aso-oke-yaba-buba-and-sokoto"
+ ],
+ "q45": [
+  "ready-to-wear-ilaje-linen-shirt",
+  "ready-to-wear-shitta-linen-shirt"
+ ],
+ "q46": [
+  "adire-festac-kaftan-dress",
+  "adire-ilaje-kaftan-dress",
+  "adire-ilaje-scarf",
+  "adire-ireti-scarf",
+  "adire-market-day-wide-leg-trousers",
+  "adire-obalende-boubou",
+  "adire-owambe-two-piece-set",
+  "adire-shitta-button-up-shirt",
+  "adire-sunburst-wide-leg-trousers"
+ ],
+ "q47": [
+  "aso-oke-eko-nights-gele-and-ipele-set"
+ ],
+ "q48": [
+  "agbada-kaftans-badagry-grand-boubou",
+  "agbada-kaftans-epe-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada",
+  "agbada-kaftans-ilaje-three-piece-agbada-2",
+  "agbada-kaftans-obalende-grand-boubou",
+  "agbada-kaftans-owambe-grand-boubou",
+  "agbada-kaftans-owambe-three-piece-agbada",
+  "agbada-kaftans-palm-frond-grand-boubou"
+ ],
+ "q49": [
+  "ankara-akoka-wrap-dress",
+  "ankara-badagry-wrap-dress",
+  "ankara-lekki-sunset-wrap-dress"
+ ],
+ "q50": [
+  "ankara-bronze-kimono",
+  "ankara-bronze-kimono-2",
+  "ankara-calabar-kimono"
+ ]
+}

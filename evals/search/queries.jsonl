@@ -1,0 +1,50 @@
+{"id": "q01", "kind": "exact", "query": "ankara wrap dress", "rule": {"categories": ["ankara"], "types": ["Wrap Dress"]}}
+{"id": "q02", "kind": "exact", "query": "adire kaftan dress", "rule": {"categories": ["adire"], "types": ["Kaftan Dress"]}}
+{"id": "q03", "kind": "exact", "query": "agbada", "rule": {"types": ["Three-Piece Agbada", "Grand Boubou"]}}
+{"id": "q04", "kind": "exact", "query": "gele", "rule": {"types": ["Gele", "Gele and Ipele Set"]}}
+{"id": "q05", "kind": "exact", "query": "aso oke bridal set", "rule": {"types": ["Bridal Set"]}}
+{"id": "q06", "kind": "exact", "query": "linen shirt", "rule": {"types": ["Linen Shirt"]}}
+{"id": "q07", "kind": "exact", "query": "blazer", "rule": {"types": ["Blazer"]}}
+{"id": "q08", "kind": "exact", "query": "buba and sokoto", "rule": {"types": ["Buba and Sokoto"]}}
+{"id": "q09", "kind": "exact", "query": "iro and buba", "rule": {"types": ["Iro and Buba Set"]}}
+{"id": "q10", "kind": "exact", "query": "maxi skirt", "rule": {"types": ["Maxi Skirt"]}}
+{"id": "q11", "kind": "exact", "query": "wide leg trousers", "rule": {"types": ["Wide-Leg Trousers"]}}
+{"id": "q12", "kind": "exact", "query": "slip dress", "rule": {"types": ["Slip Dress"]}}
+{"id": "q13", "kind": "exact", "query": "dashiki", "rule": {"types": ["Dashiki Kaftan"]}}
+{"id": "q14", "kind": "exact", "query": "scarf", "rule": {"types": ["Scarf"]}}
+{"id": "q15", "kind": "exact", "query": "hand fan", "rule": {"types": ["Hand Fan"]}}
+{"id": "q16", "kind": "synonym", "query": "cargo pants", "rule": {"types": ["Cargo Trousers"]}}
+{"id": "q17", "kind": "synonym", "query": "oversized t-shirt", "rule": {"types": ["Oversized Tee"]}}
+{"id": "q18", "kind": "synonym", "query": "peplum blouse", "rule": {"types": ["Peplum Top"]}}
+{"id": "q19", "kind": "synonym", "query": "clutch purse", "rule": {"types": ["Woven Clutch"]}}
+{"id": "q20", "kind": "synonym", "query": "cuff bracelet", "rule": {"types": ["Brass Cuff"]}}
+{"id": "q21", "kind": "synonym", "query": "head wrap", "rule": {"types": ["Gele", "Turban", "Gele and Ipele Set"]}}
+{"id": "q22", "kind": "synonym", "query": "vest for men", "rule": {"types": ["Waistcoat"]}}
+{"id": "q23", "kind": "synonym", "query": "senator wear", "rule": {"types": ["Senator Kaftan"]}}
+{"id": "q24", "kind": "synonym", "query": "bag for a party", "rule": {"types": ["Leather Tote", "Woven Clutch"]}}
+{"id": "q25", "kind": "synonym", "query": "indigo dyed clothes", "rule": {"categories": ["adire"]}}
+{"id": "q26", "kind": "synonym", "query": "hand woven fabric outfit", "rule": {"categories": ["aso-oke"]}}
+{"id": "q27", "kind": "synonym", "query": "matching set for women", "rule": {"types": ["Two-Piece Set", "Co-ord Set", "Iro and Buba Set"], "genders": ["women", "unisex"]}}
+{"id": "q28", "kind": "synonym", "query": "unisex jacket", "rule": {"types": ["Bomber Jacket", "Blazer"]}}
+{"id": "q29", "kind": "synonym", "query": "jewellery", "rule": {"types": ["Beaded Necklace", "Coral Bead Set", "Brass Cuff"]}}
+{"id": "q30", "kind": "synonym", "query": "something for the bride", "rule": {"types": ["Bridal Set"]}}
+{"id": "q31", "kind": "intent", "query": "something to wear to a wedding", "rule": {"occasions": ["wedding"], "exclude_categories": ["accessories"]}}
+{"id": "q32", "kind": "intent", "query": "owambe outfit", "rule": {"occasions": ["owambe"], "exclude_categories": ["accessories"]}}
+{"id": "q33", "kind": "intent", "query": "men's outfit for eid", "rule": {"occasions": ["eid"], "genders": ["men", "unisex"]}}
+{"id": "q34", "kind": "intent", "query": "office wear for women", "rule": {"occasions": ["work"], "genders": ["women"]}}
+{"id": "q35", "kind": "intent", "query": "casual shirt for men", "rule": {"types": ["Short-Sleeve Shirt", "Button-Up Shirt", "Linen Shirt"], "occasions": ["casual"]}}
+{"id": "q36", "kind": "intent", "query": "outfit for a naming ceremony", "rule": {"occasions": ["traditional"], "exclude_categories": ["accessories"]}}
+{"id": "q37", "kind": "intent", "query": "trousers for work", "rule": {"types": ["Tailored Trousers", "Wide-Leg Trousers"]}}
+{"id": "q38", "kind": "price", "query": "wedding outfit under 50k", "rule": {"occasions": ["wedding"], "exclude_categories": ["accessories"], "max_naira": 50000}}
+{"id": "q39", "kind": "price", "query": "gift under 15k", "rule": {"max_naira": 15000}}
+{"id": "q40", "kind": "price", "query": "party dress under 40k", "rule": {"types": ["Wrap Dress", "Slip Dress", "Kaftan Dress"], "occasions": ["party"], "max_naira": 40000}}
+{"id": "q41", "kind": "price", "query": "agbada above 400k", "rule": {"types": ["Three-Piece Agbada"], "min_naira": 400000}}
+{"id": "q42", "kind": "price", "query": "cheap ankara top", "rule": {"categories": ["ankara"], "types": ["Peplum Top", "Short-Sleeve Shirt"], "max_naira": 30000}}
+{"id": "q43", "kind": "colour", "query": "white agbada", "rule": {"types": ["Three-Piece Agbada", "Grand Boubou"], "colours_any": ["White", "Cream"]}}
+{"id": "q44", "kind": "colour", "query": "green aso oke", "rule": {"categories": ["aso-oke"], "colours_any": ["Emerald"]}}
+{"id": "q45", "kind": "colour", "query": "navy linen shirt", "rule": {"types": ["Linen Shirt"], "colours_any": ["Navy"]}}
+{"id": "q46", "kind": "colour", "query": "rust adire", "rule": {"categories": ["adire"], "colours_any": ["Rust"]}}
+{"id": "q47", "kind": "colour", "query": "emerald gele", "rule": {"types": ["Gele", "Gele and Ipele Set"], "colours_any": ["Emerald"]}}
+{"id": "q48", "kind": "typo", "query": "agbadda", "rule": {"types": ["Three-Piece Agbada", "Grand Boubou"]}}
+{"id": "q49", "kind": "typo", "query": "ankra dress", "rule": {"categories": ["ankara"], "types": ["Wrap Dress"]}}
+{"id": "q50", "kind": "typo", "query": "kimono jaket", "rule": {"types": ["Kimono"]}}
