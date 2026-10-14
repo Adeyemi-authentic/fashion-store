@@ -9,9 +9,10 @@ dominating.
 """
 
 import asyncio
+import logging
 import uuid
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +22,9 @@ from app.modules.catalog.schemas import ProductCard
 from app.modules.catalog.service import SearchFilters, SearchVocabulary
 from app.modules.search.understand import understand
 from app.platform.cache import TTLCache, catalog_cache
-from app.platform.embeddings import get_embedder
+from app.platform.embeddings import EmbeddingError, get_embedder
+
+log = logging.getLogger("app.search")
 
 Mode = Literal["keyword", "vector", "hybrid"]
 
@@ -50,6 +53,17 @@ query_vectors = TTLCache("query_vectors", ttl_seconds=3600, max_entries=2000)
 
 def normalise(q: str) -> str:
     return " ".join(q.lower().split())
+
+
+async def embed_query_or_none(q: str) -> list[float] | None:
+    """The query's embedding, or None if the embedding service can't be reached: search then
+    runs on keywords alone instead of failing (found when a dropped connection to Voyage
+    crashed both /search and the assistant)."""
+    try:
+        return await embed_query(q)
+    except EmbeddingError as exc:
+        log.warning("query embedding failed; keyword search only", extra={"error": str(exc)})
+        return None
 
 
 async def embed_query(q: str) -> list[float]:
@@ -136,10 +150,16 @@ async def search(
         # The LLM call and the query embedding are both network round trips: run them
         # together. The embedding uses the raw query, so it doesn't wait for the LLM.
         understood, vector = await asyncio.gather(
-            understand(q, vocab), embed_query(q) if needs_vector else _none()
+            understand(q, vocab), embed_query_or_none(q) if needs_vector else _none()
         )
         if understood is not None:
             text, filters = understood.text, understood.filters
+    elif config.mode != "keyword":
+        vector = await embed_query_or_none(q)
+    if config.mode != "keyword" and vector is None:
+        # No embedding: keyword search alone, matching any word (the better keyword mode in
+        # the eval: recall@10 0.70 vs 0.31 for all words).
+        config = replace(config, mode="keyword", keyword_mode="or")
 
     ids: list[uuid.UUID] = []
     tried = filters

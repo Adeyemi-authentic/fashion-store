@@ -13,13 +13,16 @@ page re-embeds it after a restart.
 
 import asyncio
 import hashlib
+import logging
 import math
 import re
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
-from app.platform.embeddings import get_embedder
+from app.platform.embeddings import EmbeddingError, get_embedder
+
+log = logging.getLogger("app.assistant.policies")
 
 DIR = Path(__file__).parent / "policies"
 SLUGS = ("shipping", "returns", "size-guide")
@@ -84,9 +87,26 @@ async def _chunk_vectors(all_chunks: list[Chunk]) -> list[list[float]]:
     return _vectors[key]
 
 
+def _words(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2}
+
+
+def keyword_search(question: str, k: int = 3) -> list[Chunk]:
+    """Fallback when the embedding service is down: sections ranked by shared words."""
+    q = _words(question)
+    scored = sorted(
+        chunks(), key=lambda c: -len(q & _words(f"{c.page_title} {c.heading} {c.text}"))
+    )
+    return scored[:k]
+
+
 async def search(question: str, k: int = 3) -> list[Chunk]:
     all_chunks = chunks()
-    vectors = await _chunk_vectors(all_chunks)
-    q = (await get_embedder().embed([question], "query"))[0]
+    try:
+        vectors = await _chunk_vectors(all_chunks)
+        q = (await get_embedder().embed([question], "query"))[0]
+    except EmbeddingError as exc:
+        log.warning("policy embedding failed; keyword fallback", extra={"error": str(exc)})
+        return keyword_search(question, k)
     scored = sorted(zip(all_chunks, vectors, strict=True), key=lambda cv: -_cosine(q, cv[1]))
     return [c for c, _ in scored[:k]]

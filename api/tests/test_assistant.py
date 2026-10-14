@@ -482,3 +482,28 @@ def test_tool_amounts_ignore_free_text() -> None:
         "sections": [{"text": "Delivery is free; returns cost ₦0."}],
     }
     assert guards.tool_amounts(result) == {2_800_000, 3_000_000, 0}
+
+
+class DownEmbedder:
+    model = "down"
+
+    async def embed(self, texts: list[str], kind: str) -> list[list[float]]:
+        from app.platform.embeddings import EmbeddingError
+
+        raise EmbeddingError("voyage request failed: ConnectError")
+
+
+async def test_search_and_policies_survive_the_embedding_service_being_down(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dropped connection to Voyage used to turn /search (and every assistant turn that
+    searched) into a 500. Now: keyword search, and word-overlap policy search."""
+    from app.modules.search import service as search
+    from app.platform import embeddings
+
+    monkeypatch.setattr(embeddings, "_embedder", DownEmbedder())
+    search.query_vectors.clear()
+    resp = await client.get("/search?q=agbada")
+    assert resp.status_code == 200 and resp.json()["items"]
+    found = await policies.search("how long do refunds take")
+    assert any(c.heading == "Refunds" for c in found)
