@@ -17,6 +17,7 @@ from app.modules.orders.inventory import (
 from app.modules.orders.models import ORDER_STATUSES, Order, OrderItem
 from app.modules.orders.payment import (
     Outcome,
+    apply_refund_event,
     apply_successful_charge,
     cancel_order,
     expire_overdue_orders,
@@ -26,6 +27,7 @@ from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 __all__ = [
     "ORDER_STATUSES",
+    "apply_refund_event",
     "InvalidTransition",
     "OrderNotFound",
     "cancel_order",

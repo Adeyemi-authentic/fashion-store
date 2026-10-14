@@ -34,6 +34,9 @@ class FakePaystack:
     async def refund(self, *, transaction_id: int, amount_kobo: int) -> None:
         self.refunds.append((transaction_id, amount_kobo))
 
+    async def list_refunds(self, transaction_id: int) -> list[str]:
+        return ["pending" for t, _ in self.refunds if t == transaction_id]
+
     def pay(self, reference: str, amount_kobo: int | None = None, currency: str = "NGN") -> Charge:
         """Simulate the customer paying on Paystack's page."""
         amount = amount_kobo if amount_kobo is not None else self.initialized[reference]["amount"]

@@ -4,6 +4,7 @@ Every response is 200 except a bad signature (401): Paystack retries anything th
 2xx, so rejecting an event we can't use would only make it come back again and again.
 """
 
+import hashlib
 import json
 import logging
 from typing import Annotated, Any
@@ -46,8 +47,11 @@ async def paystack_webhook(
         log.error("signed paystack webhook we can't parse")
         return _ok("unparseable")
 
-    # Paystack has no event id; "<event>:<data.id>" identifies a delivery's content.
-    event_id = f"{event}:{data.get('id')}"
+    # Paystack has no event id; "<event>:<id of the thing it's about>" identifies a delivery.
+    # Refund events may have no data.id, so fall back to the refund's own reference, and as
+    # a last resort the body's hash (so two different events never share a key).
+    subject = data.get("id") or data.get("refund_reference") or data.get("reference")
+    event_id = f"{event}:{subject or hashlib.sha256(raw).hexdigest()[:32]}"
     # Storing the event, applying it and marking it processed are one transaction: if
     # anything fails, nothing is stored and Paystack's retry gets a clean second attempt.
     first_time = await session.scalar(
@@ -60,11 +64,16 @@ async def paystack_webhook(
         await session.rollback()
         return _ok("duplicate")
 
-    if event != "charge.success" or data.get("status") != "success":
-        result = "ignored"
+    if event == "charge.success" and data.get("status") == "success":
+        result: str = await orders.apply_successful_charge(session, Charge.from_data(data))
+    elif event in ("refund.processed", "refund.failed"):
+        transaction_reference = str(data.get("transaction_reference") or "")
+        result = await orders.apply_refund_event(
+            session, transaction_reference, event.split(".")[1]
+        )
     else:
-        result = await orders.apply_successful_charge(session, Charge.from_data(data))
-    reference = data.get("reference")
+        result = "ignored"
+    reference = data.get("reference") or data.get("transaction_reference")
     order_id = await orders.order_id_for_reference(session, str(reference)) if reference else None
     await session.execute(
         update(PaymentEvent)

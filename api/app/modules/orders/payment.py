@@ -145,3 +145,31 @@ async def cancel_order(session: AsyncSession, order_id: uuid.UUID) -> None:
     order = await lock_order(session, order_id)
     await transition(session, order, "cancelled")  # checks the move first
     await inventory.release_order_holds(session, order.id)
+
+
+async def apply_refund_event(session: AsyncSession, transaction_reference: str, status: str) -> str:
+    """Paystack reports on a refund (webhook). processed -> the order is `refunded`; failed ->
+    a human must sort it out. Idempotent; doesn't commit."""
+    order_id = await session.scalar(
+        select(Order.id).where(Order.paystack_reference == transaction_reference)
+    )
+    if order_id is None:
+        return "unknown_order"
+    order = await lock_order(session, order_id)
+    if status == "processed":
+        if order.status == "refunded":
+            return "already_handled"
+        if order.status != "refund_pending":
+            return "ignored"
+        await transition(session, order, "refunded")
+        return "refunded"
+    if status == "failed":
+        order.needs_review = True
+        order.review_reason = "Paystack reported the refund failed"
+        await enqueue(
+            session,
+            "admin_alert",
+            {"order_id": str(order.id), "reason": "refund failed at Paystack: refund by hand"},
+        )
+        return "needs_review"
+    return "ignored"  # pending / processing: nothing to change yet

@@ -58,6 +58,10 @@ class PaymentProvider(Protocol):
 
     async def refund(self, *, transaction_id: int, amount_kobo: int) -> None: ...
 
+    async def list_refunds(self, transaction_id: int) -> list[str]:
+        """Statuses of refunds already made for this transaction."""
+        ...
+
 
 class PaystackClient:
     def __init__(self, secret_key: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
@@ -114,6 +118,16 @@ class PaystackClient:
 
     async def refund(self, *, transaction_id: int, amount_kobo: int) -> None:
         await self._call("POST", "/refund", {"transaction": transaction_id, "amount": amount_kobo})
+
+    async def list_refunds(self, transaction_id: int) -> list[str]:
+        try:
+            resp = await self._client.get("/refund", params={"transaction": transaction_id})
+        except httpx.HTTPError as exc:
+            raise PaystackError(f"Paystack unreachable: {exc.__class__.__name__}") from exc
+        body = resp.json() if resp.status_code < 500 else {}
+        if resp.status_code >= 400 or not body.get("status"):
+            raise PaystackError(f"Paystack /refund list -> {resp.status_code}")
+        return [str(r.get("status", "")) for r in body.get("data") or []]
 
 
 def signature_is_valid(raw_body: bytes, signature: str | None, secret_key: str) -> bool:

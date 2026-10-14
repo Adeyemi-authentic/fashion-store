@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.modules.accounts.service import emails_for
 from app.modules.orders.models import Order, OrderItem
+from app.modules.payments.paystack import get_paystack
 from app.platform.email import Email, get_sender
 from app.platform.worker import Job, PermanentJobError, handler
 
@@ -90,3 +91,24 @@ async def late_payment_apology(session: AsyncSession, job: Job) -> None:
     )
     subject = f"{s.brand_name}: we're refunding your payment"
     await get_sender().send(Email(to, subject, text, body), idempotency_key=f"job-{job.id}")
+
+
+@handler("refund_payment")
+async def refund_payment(session: AsyncSession, job: Job) -> None:
+    """Refund a late payment. Check first, then act: if a retry finds a refund already
+    made for this transaction (the previous attempt got that far before dying), it stops
+    there, so the customer is never refunded twice."""
+    order, _, _ = await _order(session, job)
+    if order.status == "refunded":
+        return
+    if order.status != "refund_pending":
+        raise PermanentJobError(f"order {order.id} is {order.status}, not refund_pending")
+    transaction_id = job.payload.get("transaction_id")
+    amount = int(job.payload.get("amount_kobo") or order.total_kobo)
+    if not isinstance(transaction_id, int):
+        raise PermanentJobError("payload has no Paystack transaction_id")
+    provider = get_paystack()
+    existing = [s for s in await provider.list_refunds(transaction_id) if s != "failed"]
+    if existing:
+        return  # already requested; Paystack's refund.processed webhook completes the order
+    await provider.refund(transaction_id=transaction_id, amount_kobo=amount)
