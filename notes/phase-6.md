@@ -1,6 +1,6 @@
 # Phase 6: AI search, recommendations, description pipeline
 
-**Status:** built, tested and checked live, waiting for review. The PLAN "done when" is met: a labelled set of 50 search queries was committed **before any search code** (`90f812a`), and hybrid search is compared against keyword-only search in `evals/search/RESULTS.md`.
+**Status:** built, tested, checked live, and reviewed by the user (2026-10-14). The PLAN "done when" is met: a labelled set of 50 search queries was committed **before any search code** (`90f812a`), and hybrid search is compared against keyword-only search in `evals/search/RESULTS.md`.
 
 ## Headline numbers
 | What | Result |
