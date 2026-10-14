@@ -185,3 +185,46 @@ async def stocked(session: AsyncSession):  # type: ignore[no-untyped-def]
     await session.commit()
     async with get_sessionmaker()() as s:
         assert await inventory.reserved_mismatches(s) == []
+
+
+class FakeEmail:
+    """Behaves like Resend: a second send with the same idempotency key delivers nothing."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []  # every send attempt's key
+        self.delivered: dict[str, object] = {}  # key -> Email actually delivered
+
+    async def send(self, email, idempotency_key: str) -> None:  # type: ignore[no-untyped-def]
+        self.calls.append(idempotency_key)
+        self.delivered.setdefault(idempotency_key, email)
+
+    def to(self, address: str) -> list:  # type: ignore[type-arg]
+        return [e for e in self.delivered.values() if e.to == address]  # type: ignore[attr-defined]
+
+
+@pytest.fixture
+def outbox_email(monkeypatch: pytest.MonkeyPatch) -> FakeEmail:
+    from app.platform import email as module
+    from app.platform.jobs import register_all
+
+    register_all()
+    fake = FakeEmail()
+    monkeypatch.setattr(module, "_sender", fake)
+    return fake
+
+
+async def paid_order(
+    client: AsyncClient, paystack, variant, qty: int = 1, email: str = "buyer@example.com"
+) -> dict:  # type: ignore[no-untyped-def]
+    """Checkout + pay through the callback path (Paystack fake). Returns the checkout response."""
+    import uuid as _uuid
+
+    await client.post("/cart/items", json={"variant_id": str(variant.id), "qty": qty})
+    out = (
+        await client.post(
+            "/checkout", json={"email": email}, headers={"Idempotency-Key": f"k-{_uuid.uuid4()}"}
+        )
+    ).json()
+    paystack.pay(out["reference"])
+    assert (await client.get(f"/orders/by-reference/{out['reference']}")).json()["status"] == "paid"
+    return out

@@ -21,6 +21,10 @@ class Settings(BaseSettings):
 
     hold_minutes: int = 15
     paystack_secret_key: str = ""  # sk_test_...; also the webhook signing key
+    resend_api_key: str = ""  # empty: emails are written to email_outbox_dir instead
+    email_from: str = "FlyFit <orders@example.com>"
+    admin_email: str = "admin@example.com"
+    email_outbox_dir: str = str(REPO_ROOT / "api" / ".emails")
     log_level: str = "INFO"
 
     @field_validator("database_url", "database_url_direct")
