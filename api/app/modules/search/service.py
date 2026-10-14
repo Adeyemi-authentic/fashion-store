@@ -35,6 +35,10 @@ class SearchConfig:
     candidates: int = 50  # taken from each list before fusing
     rrf_k: int = 60
     use_llm: bool = True  # query understanding (filters from the query's words)
+    # Skip the LLM for queries shorter than this with no digits ("agbada", "linen shirt"):
+    # they rarely carry a filter, and the call adds ~1.5 s. 0 = always call it. Measured:
+    # half the eval queries skip it, for -0.004 recall@10 (within run-to-run noise).
+    llm_min_words: int = 3
 
 
 DEFAULT = SearchConfig()
@@ -117,7 +121,7 @@ async def search(
 ) -> SearchResult:
     """What the storefront shows. The eval calls this too, so it measures the same thing."""
     text, filters, vector = q, SearchFilters(), None
-    if config.use_llm:
+    if config.use_llm and (len(q.split()) >= config.llm_min_words or any(ch.isdigit() for ch in q)):
         vocab = await vocabulary(session)
         needs_vector = config.mode != "keyword"
         # The LLM call and the query embedding are both network round trips: run them

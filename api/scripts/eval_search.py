@@ -59,7 +59,28 @@ VARIANTS = [
     Variant(
         "hybrid+llm",
         "hybrid, plus Claude turning the query into filters",
-        {"mode": "hybrid", "keyword_mode": "and", "use_llm": True},
+        {"mode": "hybrid", "keyword_mode": "and", "use_llm": True, "llm_min_words": 0},
+    ),
+    Variant(
+        "keyword-or",
+        "Keyword only, any word may match (ranking rewards matching more words)",
+        {"mode": "keyword", "keyword_mode": "or", "use_llm": False},
+    ),
+    Variant(
+        "hybrid-or",
+        "Keyword (any word) + vector, RRF",
+        {"mode": "hybrid", "keyword_mode": "or", "use_llm": False},
+    ),
+    Variant(
+        "hybrid-or+llm",
+        "hybrid-or, plus Claude turning the query into filters",
+        {"mode": "hybrid", "keyword_mode": "or", "use_llm": True, "llm_min_words": 0},
+    ),
+    Variant(
+        "hybrid+llm(3+ words)",
+        "**What the storefront uses.** hybrid+llm, but the LLM only for queries of 3+ words "
+        "or with a digit",
+        {"mode": "hybrid", "keyword_mode": "and", "use_llm": True, "llm_min_words": 3},
     ),
 ]
 

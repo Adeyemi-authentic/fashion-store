@@ -15,7 +15,10 @@ from app.modules.search import service, understand
 from app.modules.search.understand import ClaudeQueryParser, Understood, to_understood
 
 VOCAB = SearchVocabulary(
-    categories=("adire", "ankara"), occasions=("wedding", "work"), colours=("Rust", "Sky Indigo")
+    categories=("adire", "ankara"),
+    occasions=("wedding", "work"),
+    colours=("Rust", "Sky Indigo"),
+    types=(("adire", ("Scarf",)), ("ankara", ("Wrap Dress",))),
 )
 
 
@@ -105,9 +108,16 @@ async def test_search_works_when_the_llm_is_down(client: AsyncClient, parser) ->
 
 async def test_the_llm_answer_is_cached(client: AsyncClient, parser) -> None:  # type: ignore[no-untyped-def]
     fake = parser(FakeParser({}))
-    for q in ("Ankara  Dress", "ankara dress"):
+    for q in ("Ankara  Wrap Dress", "ankara wrap dress"):
         await client.get("/search", params={"q": q})
-    assert fake.calls == ["Ankara  Dress"]  # same query once normalised: one LLM call
+    assert fake.calls == ["Ankara  Wrap Dress"]  # same query once normalised: one LLM call
+
+
+async def test_short_queries_skip_the_llm(client: AsyncClient, parser) -> None:  # type: ignore[no-untyped-def]
+    fake = parser(FakeParser({}))
+    for q in ("agbada", "linen shirt", "tees 20k", "shirt for work"):
+        await client.get("/search", params={"q": q})
+    assert fake.calls == ["tees 20k", "shirt for work"]  # a digit, or 3+ words
 
 
 async def test_sold_out_products_keep_their_place(
@@ -204,7 +214,8 @@ async def test_query_is_sent_as_data_and_answer_is_schema_bound() -> None:
     u = await parser.parse(hostile, VOCAB)
     assert u is not None and u.filters.max_price_kobo == 4_000_000
     kw = messages.kwargs
-    assert kw["messages"] == [{"role": "user", "content": f"<query>{hostile}</query>"}]
+    [message] = kw["messages"]
+    assert message["role"] == "user" and message["content"].endswith(f"<query>{hostile}</query>")
     assert hostile not in kw["system"]
     schema = kw["output_config"]["format"]["schema"]
     assert schema["properties"]["category"]["anyOf"][0]["enum"] == ["adire", "ankara"]

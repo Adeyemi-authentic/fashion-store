@@ -164,6 +164,9 @@ class SearchVocabulary:
     categories: tuple[str, ...]
     occasions: tuple[str, ...]
     colours: tuple[str, ...]
+    # (category, its product types): lets the LLM tell that a scarf is in adire, not
+    # accessories. Product types differ across categories in ways no name reveals.
+    types: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
     def fingerprint(self) -> str:
         """Stable across processes (Python's hash() of strings is not)."""
@@ -190,6 +193,18 @@ async def search_vocabulary(session: AsyncSession) -> SearchVocabulary:
             .distinct()
         )
     ).scalars()
+    type_rows = (
+        await session.execute(
+            select(Product.category, Product.attributes["type"].astext).where(active).distinct()
+        )
+    ).all()
+    by_category: dict[str, set[str]] = {}
+    for category, product_type in type_rows:
+        if product_type:
+            by_category.setdefault(category, set()).add(product_type)
     return SearchVocabulary(
-        tuple(sorted(categories)), tuple(sorted(occasions)), tuple(sorted(colours))
+        tuple(sorted(categories)),
+        tuple(sorted(occasions)),
+        tuple(sorted(colours)),
+        tuple((c, tuple(sorted(t))) for c, t in sorted(by_category.items())),
     )
