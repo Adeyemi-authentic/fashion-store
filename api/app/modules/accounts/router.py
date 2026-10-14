@@ -9,6 +9,7 @@ from app.modules.accounts import service
 from app.modules.accounts.deps import Customer
 from app.modules.accounts.schemas import LoginIn, MeOut, SignupIn
 from app.modules.cart.service import merge_guest_cart
+from app.platform.ratelimit import login_limit
 from app.shared.cookies import CART_COOKIE, SESSION_COOKIE, clear_cookie, set_cookie
 
 router = APIRouter(prefix="/auth", tags=["accounts"])
@@ -40,7 +41,7 @@ async def _log_in(
     clear_cookie(response, CART_COOKIE)  # the guest cart now belongs to the account
 
 
-@router.post("/signup", response_model=MeOut, status_code=201)
+@router.post("/signup", response_model=MeOut, status_code=201, dependencies=[Depends(login_limit)])
 async def signup(
     body: SignupIn,
     response: Response,
@@ -59,7 +60,7 @@ async def signup(
     return me
 
 
-@router.post("/login", response_model=MeOut)
+@router.post("/login", response_model=MeOut, dependencies=[Depends(login_limit)])
 async def login(
     body: LoginIn,
     response: Response,

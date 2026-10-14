@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     database_url_direct: str | None = None  # migrations; falls back to database_url
 
     hold_minutes: int = 15
+    # Shared with the storefront proxy (X-Proxy-Auth). Only requests carrying it may tell us
+    # the client IP via X-Forwarded-For; anyone else's X-Forwarded-For is ignored.
+    proxy_shared_secret: str = ""
+    rate_limit_checkout_per_min: int = 10
+    rate_limit_login_per_min: int = 10
     paystack_secret_key: str = ""  # sk_test_...; also the webhook signing key
     resend_api_key: str = ""  # empty: emails are written to email_outbox_dir instead
     email_from: str = "FlyFit <orders@example.com>"

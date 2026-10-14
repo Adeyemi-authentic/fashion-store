@@ -14,6 +14,7 @@ from app.modules.orders import receipts
 from app.modules.orders.checkout import CheckoutError, start_checkout
 from app.modules.orders.payment import apply_successful_charge
 from app.modules.payments.paystack import PaymentProvider, PaystackError, get_paystack
+from app.platform.ratelimit import checkout_limit
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +40,13 @@ class CheckoutOut(BaseModel):
     expires_at: str
 
 
-@router.post("/checkout", response_model=CheckoutOut, status_code=201)
+@router.post(
+    "/checkout",
+    response_model=CheckoutOut,
+    status_code=201,
+    # Card testers hammer checkout with stolen cards; 10/min per IP and per account.
+    dependencies=[Depends(checkout_limit)],
+)
 async def checkout(
     body: CheckoutIn,
     session: Session,

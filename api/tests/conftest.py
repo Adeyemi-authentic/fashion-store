@@ -228,3 +228,15 @@ async def paid_order(
     paystack.pay(out["reference"])
     assert (await client.get(f"/orders/by-reference/{out['reference']}")).json()["status"] == "paid"
     return out
+
+
+@pytest.fixture(autouse=True)
+def generous_rate_limits(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """Every test client comes from one 'IP', and some tests check out a dozen times in a
+    minute. Limits are raised for all tests except the rate-limit tests themselves."""
+    if request.node.get_closest_marker("real_rate_limits"):
+        return
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "rate_limit_checkout_per_min", 10_000)
+    monkeypatch.setattr(get_settings(), "rate_limit_login_per_min", 10_000)

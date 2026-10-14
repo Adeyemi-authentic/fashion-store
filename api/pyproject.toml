@@ -23,6 +23,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
+markers = ["real_rate_limits: run with the configured rate limits instead of generous ones"]
 
 [tool.ruff]
 line-length = 100
