@@ -14,6 +14,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
         <Link href="/admin" className="rounded-full px-3 py-2 hover:bg-sand">Products</Link>
         <Link href="/admin/products/new" className="rounded-full px-3 py-2 hover:bg-sand">New product</Link>
         <Link href="/admin/orders" className="rounded-full px-3 py-2 hover:bg-sand">Orders</Link>
+        <Link href="/admin/descriptions" className="rounded-full px-3 py-2 hover:bg-sand">Descriptions</Link>
       </nav>
       <Suspense fallback={<p className="py-10 text-muted">Loading…</p>}>
         <Gate>{children}</Gate>

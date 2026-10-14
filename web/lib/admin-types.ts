@@ -70,3 +70,21 @@ export type ProductPatch = Partial<{
 }>;
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+
+export type DraftStatus = "needs_review" | "failed_checks" | "approved" | "rejected" | "superseded";
+
+export type DescriptionDraft = {
+  id: string;
+  product_id: string;
+  product_slug: string;
+  product_name: string;
+  current_description: string;
+  status: DraftStatus;
+  text: string;
+  checks: { name: string; passed: boolean; detail: string }[];
+  attempts: number;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  created_at: string;
+};

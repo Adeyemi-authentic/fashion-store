@@ -51,6 +51,28 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 {BRAND}
               </Link>
               <div className="flex items-center">
+                {/* A plain GET form: works before any JavaScript has loaded. */}
+                <form action="/search" role="search" className="mr-1 hidden md:block">
+                  <label htmlFor="header-q" className="sr-only">Search</label>
+                  <input
+                    id="header-q"
+                    name="q"
+                    type="search"
+                    maxLength={200}
+                    placeholder="Search"
+                    className="h-10 w-56 rounded-full border border-line bg-white px-4 text-sm"
+                  />
+                </form>
+                <Link
+                  href="/search"
+                  aria-label="Search"
+                  className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand md:hidden"
+                >
+                  <svg aria-hidden width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                  </svg>
+                </Link>
                 <Link
                   href="/account"
                   aria-label="Your account"

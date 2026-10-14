@@ -65,3 +65,29 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
   shopChanged(); // its held stock is free again
   return { ok: true, message: "Cancelled" };
 }
+
+export async function queueDescriptionDrafts(
+  input: { product_ids?: string[]; all_template?: boolean },
+): Promise<ActionResult> {
+  const r = await apiAs<{ queued: number }>("/admin/description-drafts/queue", { method: "POST", body: input });
+  if (!r.ok) return { ok: false, error: r.error };
+  const n = r.data.queued;
+  return {
+    ok: true,
+    message: n === 0 ? "Nothing to draft" : `Drafting ${n} description${n === 1 ? "" : "s"}: they appear under Descriptions as they finish`,
+  };
+}
+
+export async function approveDescriptionDraft(draftId: string, slug: string, text?: string): Promise<ActionResult> {
+  const r = await apiAs(`/admin/description-drafts/${draftId}/approve`, { method: "POST", body: text === undefined ? {} : { text } });
+  if (!r.ok) return { ok: false, error: r.error };
+  // `slug` only picks which page to refresh; the API already applied the change.
+  shopChanged(slug);
+  return { ok: true, message: "Approved: live on the shop" };
+}
+
+export async function rejectDescriptionDraft(draftId: string): Promise<ActionResult> {
+  const r = await apiAs(`/admin/description-drafts/${draftId}/reject`, { method: "POST" });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, message: "Rejected" };
+}

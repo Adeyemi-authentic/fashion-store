@@ -80,3 +80,23 @@ export type ListingQuery = {
   limit?: number;
   cursor?: string;
 };
+
+// GET /search: what the search understood from the query (shown to the shopper), and the
+// results. Filters are empty when the LLM was skipped (short query) or unavailable.
+export type SearchFilters = {
+  category: string | null;
+  min_price_kobo: number | null;
+  max_price_kobo: number | null;
+  gender: string | null;
+  occasion: string | null;
+  colours: string[];
+};
+
+export type SearchResponse = {
+  query: string;
+  items: ProductCard[];
+  filters: SearchFilters;
+  relaxed: boolean;
+};
+
+export type Recommendations = { similar: ProductCard[]; bought_together: ProductCard[] };

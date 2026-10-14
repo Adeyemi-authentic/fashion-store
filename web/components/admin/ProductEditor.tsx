@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { addVariant, adjustStock, archiveProduct, setPrice, updateProduct } from "@/app/admin/actions";
+import { DraftOneButton } from "@/components/admin/DescriptionDrafts";
 import type { ActionResult, AdminProduct, AdminVariant } from "@/lib/admin-types";
 import { CATEGORY_INFO } from "@/lib/catalog";
 import { formatNaira } from "@/lib/format";
@@ -88,6 +89,8 @@ export function ProductEditor({ product }: { product: AdminProduct }) {
           Description
           <textarea name="description" defaultValue={product.description} rows={4} maxLength={5000} className={`${inputClass} h-auto py-2`} />
         </label>
+        {/* Queues a draft for review under Admin > Descriptions; it never changes the text here. */}
+        <DraftOneButton productId={product.id} />
         <label className="block text-sm">
           Image path
           <input name="image_url" defaultValue={product.image?.url ?? ""} pattern="/images/.*" className={inputClass} />

@@ -3,8 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { GridSkeleton, ProductCard, ProductGrid } from "@/components/ProductCard";
 import { VariantPicker } from "@/components/VariantPicker";
-import { getAllSlugs, getProduct } from "@/lib/api";
+import { getAllSlugs, getProduct, getRecommendations } from "@/lib/api";
 import { categoryLabel } from "@/lib/catalog";
 
 // All ~130 product pages are built ahead of time; a product added later is rendered on its
@@ -25,9 +26,40 @@ export async function generateMetadata(props: PageProps<"/p/[slug]">): Promise<M
 
 export default function ProductPage(props: PageProps<"/p/[slug]">) {
   return (
-    <Suspense fallback={<ProductSkeleton />}>
-      <Product params={props.params} />
-    </Suspense>
+    <>
+      <Suspense fallback={<ProductSkeleton />}>
+        <Product params={props.params} />
+      </Suspense>
+      <Suspense fallback={<div className="mx-auto mt-14 max-w-6xl px-4"><GridSkeleton count={4} /></div>}>
+        <Recommended params={props.params} />
+      </Suspense>
+    </>
+  );
+}
+
+async function Recommended({ params }: Pick<PageProps<"/p/[slug]">, "params">) {
+  const { similar, bought_together } = await getRecommendations((await params).slug);
+  const rows = [
+    // Shown only once real orders back it up (2+ shared orders); empty until then.
+    { id: "rec-together", title: "Often bought together", items: bought_together },
+    { id: "rec-similar", title: "You might also like", items: similar },
+  ].filter((r) => r.items.length > 0);
+  if (rows.length === 0) return null;
+  return (
+    <div className="mx-auto max-w-6xl px-4">
+      {rows.map((row) => (
+        <section key={row.id} aria-labelledby={row.id} className="mt-14">
+          <h2 id={row.id} className="font-display text-2xl">{row.title}</h2>
+          <div className="mt-4">
+            <ProductGrid>
+              {row.items.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </ProductGrid>
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { queryString } from "./catalog";
-import type { Category, Facets, ListingQuery, ProductDetail, ProductPage } from "./types";
+import type { Category, Facets, ListingQuery, ProductDetail, ProductPage, Recommendations } from "./types";
 
 // Server components call the API directly (server to server). Browsers use /api/* instead.
 const API = process.env.API_BASE_URL ?? "http://localhost:8000";
@@ -53,4 +53,16 @@ export async function getAllSlugs(): Promise<string[]> {
     cursor = page.next_cursor ?? undefined;
   } while (cursor);
   return slugs;
+}
+
+/** "Similar items" and "often bought together" for a product page. Cached like the rest of
+ * the catalog; the API drops sold-out items when it builds the lists. */
+export async function getRecommendations(slug: string): Promise<Recommendations> {
+  "use cache";
+  cacheLife("catalog");
+  cacheTag("products", `product:${slug}`);
+  return (await get<Recommendations>(`/products/${encodeURIComponent(slug)}/recommendations`)) ?? {
+    similar: [],
+    bought_together: [],
+  };
 }
