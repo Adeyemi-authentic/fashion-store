@@ -100,3 +100,5 @@ export type SearchResponse = {
 };
 
 export type Recommendations = { similar: ProductCard[]; bought_together: ProductCard[] };
+
+export type AssistantMessage = { role: "user" | "assistant"; text: string; products: ProductCard[] };

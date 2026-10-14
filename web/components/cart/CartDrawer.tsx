@@ -74,7 +74,7 @@ export function CartDrawer() {
                   {formatNaira(cart.subtotal_kobo)}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-muted">Delivery is worked out at checkout.</p>
+              <p className="mt-1 text-xs text-muted">Free delivery across Nigeria.</p>
               {cart.can_checkout ? (
                 <Link
                   href="/checkout"

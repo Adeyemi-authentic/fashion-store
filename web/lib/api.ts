@@ -66,3 +66,19 @@ export async function getRecommendations(slug: string): Promise<Recommendations>
     bought_together: [],
   };
 }
+
+export const POLICY_PAGES = [
+  { slug: "shipping", title: "Shipping" },
+  { slug: "returns", title: "Returns" },
+  { slug: "size-guide", title: "Size guide" },
+] as const;
+
+/** A policy page's markdown. The API's assistant answers from the same text. */
+export async function getPolicy(slug: string): Promise<string | null> {
+  "use cache";
+  cacheLife("catalog");
+  const res = await fetch(`${API}/policies/${encodeURIComponent(slug)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`API /policies/${slug} -> ${res.status}`);
+  return res.text();
+}

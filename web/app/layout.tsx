@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Assistant } from "@/components/assistant/Assistant";
 import { CartButton } from "@/components/cart/CartButton";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { CartProvider } from "@/components/cart/CartProvider";
-import { getCategories } from "@/lib/api";
+import { getCategories, POLICY_PAGES } from "@/lib/api";
 import { BRAND } from "@/lib/brand";
 import { categoryLabel } from "@/lib/catalog";
 import "./globals.css";
@@ -97,6 +98,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="flex-1">{children}</main>
           <footer className="mt-16 border-t border-line">
             <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted">
+              <nav aria-label="Help" className="mb-4 flex flex-wrap gap-x-5 gap-y-2">
+                {POLICY_PAGES.map((p) => (
+                  <Link key={p.slug} href={`/help/${p.slug}`} className="hover:text-ink">
+                    {p.title}
+                  </Link>
+                ))}
+              </nav>
               <p className="font-medium text-ink">{BRAND} is a fictional brand. This is a concept build.</p>
               <p className="mt-1">
                 Product photos are AI-generated. Payments run in Paystack test mode, and nothing
@@ -105,6 +113,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </footer>
           <CartDrawer />
+          <Assistant />
         </CartProvider>
       </body>
     </html>
