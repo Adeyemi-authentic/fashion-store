@@ -29,13 +29,13 @@ flowchart TB
 | FastAPI | All business logic | Each module owns its tables and is used by other modules only through its service interface ([ADR-001](adr/001-modular-monolith.md)) |
 | Postgres | Every durable fact, plus the job queue | A job is written in the same transaction as the change that caused it ([ADR-002](adr/002-postgres-outbox-queue.md)) |
 | Caches | Next.js ISR for pages; in-process TTL cache for catalog API responses | Safe to lose at any time; never the only copy. No Redis ([ADR-006](adr/006-no-redis.md)) |
-| Worker | Emails, refunds, hold clean-up, embeddings, alerts | At least once, so every side effect is idempotent. Runs inside the API process on the free tier |
+| Worker | Emails, refunds, hold clean-up, embeddings, description drafts, alerts | At least once, so every side effect is idempotent. Runs inside the API process on the free tier |
 
 ### Module → table ownership
 
 | Module | Owns |
 |---|---|
-| catalog | `products`, `variants`, `product_images` |
+| catalog | `products`, `variants`, `product_images`, `description_drafts` |
 | cart | `carts`, `cart_items` |
 | orders | `orders`, `order_items`, `reservations`, `idempotency_keys` |
 | payments | `payment_events` |
@@ -43,7 +43,7 @@ flowchart TB
 | assistant | `assistant_sessions`, `assistant_messages` |
 | (shared infra) | `outbox_jobs`, `rate_limits` (UNLOGGED) |
 
-`admin` and `search` own no tables. They call the other modules' services. One exception is allowed and written down: stock changes (`variants.stock_*`) happen only inside `orders.inventory`, never in `catalog`, so that all the concurrency rules live in one file.
+`admin` and `search` own no tables. They call the other modules' services. Search's SQL (full-text and vector candidates, similar products) lives in `catalog.retrieval`, behind `catalog.service`; the search module does the ranking (RRF), the LLM query step and recommendations. "Bought together" comes from `orders.service`, since it counts orders. One exception is allowed and written down: stock changes (`variants.stock_*`) happen only inside `orders.inventory`, never in `catalog`, so that all the concurrency rules live in one file.
 
 ## 2. Data model (ERD)
 
@@ -274,3 +274,26 @@ sequenceDiagram
 - **Worker:** claims with `FOR UPDATE SKIP LOCKED` and a lease; finishing is fenced on the claim's `attempts`; backoff with jitter; `dead` after 6 tries (alerts an admin). Runs in the API process on the free tier (`WORKER_IN_API`), or as `python -m app.worker_main`. Scheduled jobs re-queue themselves in the same transaction, with a `singleton_key` so there's one live copy.
 - **Metrics:** `GET /metrics` (Prometheus): request latency by route, jobs by outcome, queue depth, oldest due job, cache hits.
 - **Config:** everything comes from environment variables (see [`.env.example`](../.env.example)). The brand name is one variable.
+
+## 6. Search, recommendations, descriptions (Phase 6)
+
+```mermaid
+flowchart LR
+    Q["GET /search?q="] --> RL[rate limit] --> G{"3+ words<br/>or a digit?"}
+    G -->|yes| LLM["Claude: query → filters<br/>(JSON schema, enums = real values)"]
+    G -->|yes| E["Voyage: query embedding"]
+    G -->|no| E
+    LLM --> F[filters, re-checked]
+    E --> V["vector candidates<br/>(cosine, exact)"]
+    F --> K["keyword candidates<br/>(tsvector, all words)"]
+    F --> V
+    K --> R["RRF k=60"]
+    V --> R
+    R --> X{"no results?"} -->|yes| Relax["drop filters except price, retry"]
+    X -->|no| Cards
+```
+
+- The LLM call and the query embedding run in parallel. A missing key, a timeout (5 s), an API error or a refusal all mean "no filters".
+- **Embeddings** are refreshed by an `embed_product` job queued in the same transaction as any change to a product's text. The stored hash of (model + text) makes the refresh idempotent.
+- **Descriptions:** a `draft_description` job drafts from the facts, then rule checks run, then the Claude claim check, with one retry. The draft is stored in `description_drafts` and goes live only when an admin approves it. `products.description_source` stops a re-seed from overwriting approved text.
+- Evals: `evals/search/` (50 labelled queries) and `evals/descriptions/`.
