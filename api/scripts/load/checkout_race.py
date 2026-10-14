@@ -379,6 +379,8 @@ def main() -> None:
                     "2",
                     "--log-level",
                     "warning",
+                    "--timeout-keep-alive",
+                    "75",
                 ],
                 env,
                 logs / "api.log",
