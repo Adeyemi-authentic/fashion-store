@@ -21,6 +21,7 @@ JOB_TYPES = frozenset(
         "low_stock_alert",
         "cleanup",
         "embed_product",
+        "draft_description",
         "test_job",  # used only by the worker tests
     }
 )

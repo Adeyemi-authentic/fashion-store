@@ -37,3 +37,40 @@ class OrderOut(BaseModel):
 class OrderPage(BaseModel):
     items: list[OrderOut]
     next_cursor: str | None
+
+
+class DraftCheckOut(BaseModel):
+    name: str
+    passed: bool
+    detail: str
+
+
+class DescriptionDraftOut(BaseModel):
+    id: UUID
+    product_id: UUID
+    product_slug: str
+    product_name: str
+    current_description: str
+    status: str
+    text: str
+    checks: list[DraftCheckOut]
+    attempts: int
+    model: str
+    input_tokens: int
+    output_tokens: int
+    created_at: datetime
+
+
+class QueueDraftsIn(BaseModel):
+    """Either a list of products, or every visible product still on its template text."""
+
+    product_ids: Annotated[list[UUID], Field(max_length=200)] = []
+    all_template: bool = False
+
+
+class QueuedOut(BaseModel):
+    queued: int
+
+
+class ApproveDraftIn(BaseModel):
+    text: Annotated[str | None, Field(max_length=2000)] = None  # an admin's edit, if any

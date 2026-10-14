@@ -8,7 +8,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_session
 from app.modules.accounts import service as accounts
 from app.modules.accounts.deps import Admin, require_admin
-from app.modules.admin.schemas import CreatedOut, OrderOut, OrderPage, StockAdjustIn, StockOut
+from app.modules.admin.schemas import (
+    ApproveDraftIn,
+    CreatedOut,
+    DescriptionDraftOut,
+    DraftCheckOut,
+    OrderOut,
+    OrderPage,
+    QueuedOut,
+    QueueDraftsIn,
+    StockAdjustIn,
+    StockOut,
+)
 from app.modules.catalog import service as catalog
 from app.modules.catalog.schemas import (
     AdminProductOut,
@@ -20,6 +31,7 @@ from app.modules.catalog.schemas import (
 )
 from app.modules.orders import service as orders
 from app.platform.cache import catalog_cache
+from app.platform.llm import get_llm
 from app.shared.pagination import InvalidCursor
 
 log = logging.getLogger(__name__)
@@ -214,3 +226,63 @@ async def cancel_order(order_id: UUID, session: Session, admin: Admin) -> None:
     await session.commit()
     catalog_cache.clear()  # shoppers see the change now, not in a minute
     log.info("admin %s cancelled order %s", admin.email, order_id)
+
+
+# --- Description drafts (Phase 6): Claude drafts, automatic checks, an admin decides. ---
+
+
+@router.post("/description-drafts/queue", response_model=QueuedOut, status_code=202)
+async def queue_description_drafts(
+    body: QueueDraftsIn, session: Session, admin: Admin
+) -> QueuedOut:
+    if get_llm() is None:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is not set")
+    ids = list(body.product_ids)
+    if body.all_template:
+        ids += await catalog.products_with_template_descriptions(session)
+    queued = await catalog.queue_drafts(session, list(dict.fromkeys(ids)))
+    await session.commit()
+    log.info("admin %s queued %d description drafts", admin.email, queued)
+    return QueuedOut(queued=queued)
+
+
+@router.get("/description-drafts", response_model=list[DescriptionDraftOut])
+async def list_description_drafts(
+    session: Session,
+    status: Literal["needs_review", "failed_checks", "approved", "rejected", "superseded"]
+    | None = None,
+) -> list[DescriptionDraftOut]:
+    return [
+        DescriptionDraftOut(
+            **{k: v for k, v in vars(d).items() if k != "checks"},
+            checks=[DraftCheckOut(**c) for c in d.checks],
+        )
+        for d in await catalog.list_drafts(session, status)
+    ]
+
+
+@router.post("/description-drafts/{draft_id}/approve", status_code=204)
+async def approve_description_draft(
+    draft_id: UUID, body: ApproveDraftIn, session: Session, admin: Admin
+) -> None:
+    try:
+        slug = await catalog.approve_draft(session, draft_id, admin.id, body.text)
+    except catalog.DraftNotFound as exc:
+        raise HTTPException(status_code=404, detail="draft not found") from exc
+    except catalog.DraftNotApprovable as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    catalog_cache.clear()  # shoppers see the change now, not in a minute
+    log.info("admin %s approved description draft %s for %s", admin.email, draft_id, slug)
+
+
+@router.post("/description-drafts/{draft_id}/reject", status_code=204)
+async def reject_description_draft(draft_id: UUID, session: Session, admin: Admin) -> None:
+    try:
+        await catalog.reject_draft(session, draft_id, admin.id)
+    except catalog.DraftNotFound as exc:
+        raise HTTPException(status_code=404, detail="draft not found") from exc
+    except catalog.DraftNotApprovable as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    log.info("admin %s rejected description draft %s", admin.email, draft_id)

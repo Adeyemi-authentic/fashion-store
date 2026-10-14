@@ -3,8 +3,10 @@
     uv run python -m scripts.seed_catalog
 
 Products upsert on `slug`, variants on `sku`, images on (product_id, position). Re-running
-updates names, prices and descriptions but never touches stock or `created_at`: stock belongs
+updates names and prices but never touches stock or `created_at`: stock belongs
 to orders.inventory once the store is live (ADR-003), and a re-seed must not undo real sales.
+Descriptions are only updated while they are still the seed's template: an approved AI
+draft or an admin's own text is kept.
 
 A product is `active` only if its image exists in web/public; otherwise it is seeded as
 `draft` (hidden) with no image row. Generating the missing image and re-seeding makes it live.
@@ -58,7 +60,11 @@ async def seed(session: AsyncSession) -> SeedResult:
         set_={
             "name": pstmt.excluded.name,
             "category": pstmt.excluded.category,
-            "description": pstmt.excluded.description,
+            # Only the seed's own template: an approved or admin-written description stays.
+            "description": case(
+                (Product.description_source == "template", pstmt.excluded.description),
+                else_=Product.description,
+            ),
             "base_price_kobo": pstmt.excluded.base_price_kobo,
             "attributes": pstmt.excluded.attributes,
             "status": case((Product.status == "archived", "archived"), else_=pstmt.excluded.status),

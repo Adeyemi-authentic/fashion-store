@@ -29,9 +29,9 @@ def test_admin_routes_were_found() -> None:
 
 
 def _fill(path: str) -> str:
-    return path.replace("{product_id}", str(uuid.uuid4())).replace(
-        "{variant_id}", str(uuid.uuid4())
-    )
+    for name in ("{product_id}", "{variant_id}", "{draft_id}"):
+        path = path.replace(name, str(uuid.uuid4()))
+    return path
 
 
 @pytest.mark.parametrize(("method", "path"), ADMIN_ROUTES)

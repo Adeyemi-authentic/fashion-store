@@ -11,6 +11,16 @@ from sqlalchemy import Select, and_, delete, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.modules.catalog.drafts import (  # noqa: F401  (public interface)
+    DraftNotApprovable,
+    DraftNotFound,
+    DraftRow,
+    approve_draft,
+    list_drafts,
+    products_with_template_descriptions,
+    queue_drafts,
+    reject_draft,
+)
 from app.modules.catalog.models import Product, ProductImage, Variant
 from app.modules.catalog.retrieval import (  # noqa: F401  (public interface)
     EmbeddingInput,
@@ -469,6 +479,8 @@ async def update_product(
     changes = data.model_dump(exclude_unset=True, exclude={"image_url", "status"})
     for field, value in changes.items():
         setattr(product, field, value)
+    if "description" in changes:
+        product.description_source = "admin"  # a re-seed must not overwrite it
     if data.image_url is not None:
         await _set_image(session, product, data.image_url)
         await session.flush()
