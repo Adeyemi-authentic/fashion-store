@@ -279,6 +279,7 @@ async def test_late_payment_when_stock_is_gone_becomes_refund(
         "reference": out["reference"],
         "transaction_id": tx_id,
         "amount_kobo": out["total_kobo"],
+        "request_id": resp.headers["x-request-id"],  # the webhook request that caused it
     }
 
 

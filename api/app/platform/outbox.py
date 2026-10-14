@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.platform.logging import request_id_var
 from app.platform.models import OutboxJob
 
 JOB_TYPES = frozenset(
@@ -21,5 +22,7 @@ JOB_TYPES = frozenset(
 async def enqueue(session: AsyncSession, job_type: str, payload: dict[str, Any]) -> None:
     if job_type not in JOB_TYPES:
         raise ValueError(f"unknown job type {job_type}")
+    # The request that caused the job, so its logs and the job's logs can be joined up.
+    payload = {**payload, "request_id": request_id_var.get()}
     session.add(OutboxJob(type=job_type, payload=payload))
     await session.flush()
