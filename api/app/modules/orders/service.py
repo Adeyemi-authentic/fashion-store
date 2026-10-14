@@ -22,10 +22,14 @@ from app.modules.orders.payment import (
     cancel_order,
     expire_overdue_orders,
 )
+from app.modules.orders.receipts import Receipt
+from app.modules.orders.receipts import for_customer as customer_orders
 from app.modules.orders.state import InvalidTransition, OrderNotFound
 from app.shared.pagination import InvalidCursor, decode_cursor, encode_cursor
 
 __all__ = [
+    "Receipt",
+    "customer_orders",
     "ORDER_STATUSES",
     "delete_old_idempotency_keys",
     "apply_refund_event",

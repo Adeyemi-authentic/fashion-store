@@ -212,6 +212,18 @@ async def cards_by_id(session: AsyncSession, ids: list[uuid.UUID]) -> list[Produ
     return [by_id[i] for i in ids if i in by_id]
 
 
+async def cards_by_slug(session: AsyncSession, slugs: list[str]) -> list[ProductCard]:
+    """Cards for the active products among these slugs, in the order given; unknown or
+    hidden slugs are skipped."""
+    if not slugs:
+        return []
+    rows = await session.execute(
+        select(Product.slug, Product.id).where(Product.slug.in_(slugs), Product.status == "active")
+    )
+    ids = {slug: pid for slug, pid in rows}
+    return await cards_by_id(session, [ids[s] for s in slugs if s in ids])
+
+
 async def get_product(session: AsyncSession, slug: str) -> ProductDetail | None:
     product = (
         await session.execute(

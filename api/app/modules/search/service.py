@@ -118,10 +118,19 @@ async def search(
     q: str,
     limit: int = 24,
     config: SearchConfig = DEFAULT,
+    filters: SearchFilters | None = None,
 ) -> SearchResult:
-    """What the storefront shows. The eval calls this too, so it measures the same thing."""
-    text, filters, vector = q, SearchFilters(), None
-    if config.use_llm and (len(q.split()) >= config.llm_min_words or any(ch.isdigit() for ch in q)):
+    """What the storefront shows. The eval calls this too, so it measures the same thing.
+
+    `filters` given (the shopping assistant has already read the shopper's words): they are
+    used as they are, and the query-understanding LLM call is skipped."""
+    text, vector = q, None
+    if filters is None:
+        filters = SearchFilters()
+        use_llm = config.use_llm
+    else:
+        use_llm = False
+    if use_llm and (len(q.split()) >= config.llm_min_words or any(ch.isdigit() for ch in q)):
         vocab = await vocabulary(session)
         needs_vector = config.mode != "keyword"
         # The LLM call and the query embedding are both network round trips: run them
