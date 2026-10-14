@@ -40,7 +40,7 @@ flowchart TB
 | orders | `orders`, `order_items`, `reservations`, `idempotency_keys` |
 | payments | `payment_events` |
 | accounts | `customers`, `sessions` |
-| assistant | `assistant_sessions`, `assistant_messages` |
+| assistant | `assistant_sessions`, `assistant_messages`, `assistant_spend` |
 | (shared infra) | `outbox_jobs`, `rate_limits` (UNLOGGED) |
 
 `admin` and `search` own no tables. They call the other modules' services. Search's SQL (full-text and vector candidates, similar products) lives in `catalog.retrieval`, behind `catalog.service`; the search module does the ranking (RRF), the LLM query step and recommendations. "Bought together" comes from `orders.service`, since it counts orders. One exception is allowed and written down: stock changes (`variants.stock_*`) happen only inside `orders.inventory`, never in `catalog`, so that all the concurrency rules live in one file.
@@ -297,3 +297,31 @@ flowchart LR
 - **Embeddings** are refreshed by an `embed_product` job queued in the same transaction as any change to a product's text. The stored hash of (model + text) makes the refresh idempotent.
 - **Descriptions:** a `draft_description` job drafts from the facts, then rule checks run, then the Claude claim check, with one retry. The draft is stored in `description_drafts` and goes live only when an admin approves it. `products.description_source` stops a re-seed from overwriting approved text.
 - Evals: `evals/search/` (50 labelled queries) and `evals/descriptions/`.
+
+## 7. Shopping assistant (Phase 7)
+
+```mermaid
+sequenceDiagram
+    participant B as Browser (widget)
+    participant A as API: assistant
+    participant C as Claude (Haiku 5.5)
+    participant S as search / catalog / cart / orders services
+    B->>A: POST /assistant/messages (cookies: session, cart, assistant_session)
+    A->>A: rate limit · spend cap · conversation belongs to this person?
+    loop up to 6 model calls
+        A->>A: commit (no transaction held during the call)
+        A->>C: tools + system + history (append-only, cached prefix)
+        C-->>A: tool_use or text
+        A->>S: run tool with the request's identity (never the model's)
+        S-->>A: JSON (money as "₦45,000" strings)
+    end
+    A->>A: price check (amounts must come from price fields or the shopper)<br/>fail → system note, one rewrite → else safe fallback
+    A->>A: link check (other sites → text) · unknown product links → text
+    A-->>B: reply + product cards (+ cart cookie if a guest's first cart)
+```
+
+- **Tools:** `search_products`, `get_product`, `check_stock`, `add_to_cart`, `get_order_status`, `get_policy`. No tool can order, pay or change a price.
+- **Identity:** `get_order_status` takes no customer id. It reads `orders.customer_orders(session customer)`, so another customer's reference is simply "not found".
+- **Policies:** `api/app/modules/assistant/policies/*.md`, served at `GET /policies/{slug}` (the storefront's `/help/*` pages) and searched by section with the product embedder.
+- **Logging:** every message is stored as sent to or received from the model (`assistant_messages`, ordered by `seq`), with tokens, cost and latency. Rejected replies are kept and flagged. `assistant_spend` holds the cost per UTC day for the cap.
+- Evals: `evals/assistant/` (the 10 hardest scenarios, real model, throwaway database).
