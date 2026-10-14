@@ -13,7 +13,6 @@ import httpx
 
 from app.config import get_settings
 
-BASE_URL = "https://api.paystack.co"
 # A checkout request waits on initialize, so it must fail fast rather than hang.
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
@@ -64,9 +63,14 @@ class PaymentProvider(Protocol):
 
 
 class PaystackClient:
-    def __init__(self, secret_key: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
+    def __init__(
+        self,
+        secret_key: str,
+        transport: httpx.AsyncBaseTransport | None = None,
+        base_url: str = "https://api.paystack.co",
+    ) -> None:
         self._client = httpx.AsyncClient(
-            base_url=BASE_URL,
+            base_url=base_url,
             timeout=TIMEOUT,
             headers={"Authorization": f"Bearer {secret_key}"},
             transport=transport,
@@ -145,5 +149,6 @@ def get_paystack() -> PaymentProvider:
     """FastAPI dependency. One shared client (connection pooling); tests override this."""
     global _client
     if _client is None:
-        _client = PaystackClient(get_settings().paystack_secret_key)
+        s = get_settings()
+        _client = PaystackClient(s.paystack_secret_key, base_url=s.paystack_base_url)
     return _client

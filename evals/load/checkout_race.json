@@ -1,0 +1,49 @@
+{
+  "buyers": 200,
+  "units": 10,
+  "sku": "FF-001-ORANGE-TEAL-L",
+  "checkout_responses": {
+    "409 bag_needs_attention": 162,
+    "409 out_of_stock": 28,
+    "201": 10
+  },
+  "orders_created": 10,
+  "orders_by_status": {
+    "paid": 10
+  },
+  "paid_orders": 10,
+  "paid_units": 10,
+  "oversold_units": 0,
+  "final_stock_on_hand": 0,
+  "final_stock_reserved": 0,
+  "min_free_stock_seen": 0,
+  "min_on_hand_seen": 0,
+  "poller_samples": 93,
+  "reserved_mismatch_variants": 0,
+  "webhook_first_delivery": [
+    "paid"
+  ],
+  "duplicate_webhooks_x5": [
+    "duplicate",
+    "duplicate",
+    "duplicate",
+    "duplicate",
+    "duplicate"
+  ],
+  "payment_events_for_that_order": 1,
+  "forged_webhook_status": 401,
+  "burst_seconds": 0.54,
+  "checkout_p50_s": 0.349,
+  "checkout_p95_s": 0.509,
+  "checkout_max_s": 0.528,
+  "api_workers": 2,
+  "checks": {
+    "no server errors (sold out is a 409, not a crash)": true,
+    "exactly 10 paid orders": true,
+    "0 units oversold": true,
+    "stock never negative": true,
+    "stock_reserved matches reservations": true,
+    "same webhook x5 -> 1 payment": true,
+    "forged signature -> 401": true
+  }
+}

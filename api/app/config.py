@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     rate_limit_checkout_per_min: int = 10
     rate_limit_login_per_min: int = 10
     paystack_secret_key: str = ""  # sk_test_...; also the webhook signing key
+    # Only changed by the load test, which points the API at a local fake Paystack server.
+    paystack_base_url: str = "https://api.paystack.co"
     resend_api_key: str = ""  # empty: emails are written to email_outbox_dir instead
     email_from: str = "FlyFit <orders@example.com>"
     admin_email: str = "admin@example.com"
