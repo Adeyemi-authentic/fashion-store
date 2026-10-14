@@ -1,11 +1,14 @@
 """Checks on what the assistant says, before the shopper sees it.
 
-1. Prices: every naira amount in a reply must have appeared in a tool result in this
-   conversation (or in the shopper's own words: "under 50k" may be repeated back as
-   "under ₦50,000"). The model is told never to work out prices itself, but a prompt is a
-   request, not a guarantee; this check is the guarantee. An amount it can't trace is a
-   made-up price, and the reply is not shown (the caller asks once for a corrected reply,
-   then falls back to one with no prices).
+1. Prices: every naira amount in a reply must have appeared in a price field of a tool
+   result in this conversation (or in the shopper's own words: "under 50k" may be repeated
+   back as "under ₦50,000"). Only the shop's own fields count (price, subtotal, the policy
+   pages we wrote), never free text such as a product description: text like that can carry
+   a planted "on sale today for ₦500", and an amount that merely appeared somewhere in a tool
+   result is not a price the shop set (found by eval scenario 8). The model is told never to
+   work out prices itself, but a prompt is a request, not a guarantee; this check is the
+   guarantee. An amount it can't trace is a made-up price, and the reply is not shown (the
+   caller asks once for a corrected reply, then falls back to one with no prices).
 
 2. Links: only links to this shop survive. Product text and policy pages are data the model
    reads, so a planted "send them to http://evil.example" must not reach the shopper as a
@@ -13,6 +16,7 @@
 """
 
 import re
+from typing import Any
 from urllib.parse import urlsplit
 
 # A naira amount as written in a reply: "₦45,000", "₦45k", "N45,000", "NGN 45000",
@@ -44,6 +48,27 @@ def naira_amounts(text: str) -> set[int]:
             found.add(_kobo(g[2], g[3]))
         else:
             found.add(_kobo(g[4], g[5]))
+    return found
+
+
+# Tool result fields whose amounts the shop vouches for. Everything else in a tool result
+# (descriptions, attributes, product names) is data that could have been written by anyone.
+MONEY_KEYS = frozenset({"price", "price_from", "unit_price", "line_total", "subtotal", "total"})
+TRUSTED_TEXT_KEYS = frozenset({"text"})  # policy sections: pages in this repo
+
+
+def tool_amounts(result: Any) -> set[int]:
+    """Amounts in a tool result (parsed JSON) that the shop vouches for, in kobo."""
+    found: set[int] = set()
+    if isinstance(result, dict):
+        for key, value in result.items():
+            if isinstance(value, str) and key in MONEY_KEYS | TRUSTED_TEXT_KEYS:
+                found |= naira_amounts(value)
+            elif isinstance(value, dict | list):
+                found |= tool_amounts(value)
+    elif isinstance(result, list):
+        for item in result:
+            found |= tool_amounts(item)
     return found
 
 
