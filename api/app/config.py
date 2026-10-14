@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     worker_lease_seconds: float = 60.0
     worker_poll_seconds: float = 1.0
     log_level: str = "INFO"
+    sentry_dsn: str = ""  # empty: Sentry off
+    metrics_token: str = ""  # set in production: /metrics then needs "Bearer <token>"
 
     @field_validator("database_url", "database_url_direct")
     @classmethod

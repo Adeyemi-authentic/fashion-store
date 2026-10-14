@@ -28,6 +28,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.platform.logging import request_id_var
+from app.platform.metrics import JOBS_RUN
 from app.platform.models import OutboxJob
 
 log = logging.getLogger("app.worker")
@@ -151,6 +152,7 @@ async def run_job(
                 await asyncio.wait_for(fn(session, job), timeout=lease.total_seconds() * 0.8)
                 if await _finish(session, job):
                     await session.commit()
+                    JOBS_RUN.labels(job.type, "done").inc()
                     log.info(
                         "job done",
                         extra={"job_id": job.id, "job_type": job.type, "attempt": job.attempts},
@@ -164,7 +166,10 @@ async def run_job(
                 permanent = isinstance(exc, PermanentJobError)
                 outcome = await _fail(session, job, f"{exc.__class__.__name__}: {exc}", permanent)
                 await session.commit()
-                log.warning(
+                JOBS_RUN.labels(job.type, outcome).inc()
+                # A dead job needs a human: log it as an error, which Sentry picks up.
+                log.log(
+                    logging.ERROR if outcome == "dead" else logging.WARNING,
                     "job failed",
                     extra={
                         "job_id": job.id,
