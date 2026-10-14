@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     email_from: str = "FlyFit <orders@example.com>"
     admin_email: str = "admin@example.com"
     email_outbox_dir: str = str(REPO_ROOT / "api" / ".emails")
+    # The free tier runs the outbox worker inside the API process (PLAN.md section 5). Safe
+    # with several processes too: SKIP LOCKED shares the jobs out.
+    worker_in_api: bool = True
+    worker_lease_seconds: float = 60.0
+    worker_poll_seconds: float = 1.0
     log_level: str = "INFO"
 
     @field_validator("database_url", "database_url_direct")

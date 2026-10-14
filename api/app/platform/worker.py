@@ -186,14 +186,27 @@ async def run_once(sessionmaker: async_sessionmaker[AsyncSession], limit: int = 
 
 
 async def run_forever(
-    sessionmaker: async_sessionmaker[AsyncSession], stop: asyncio.Event, poll_seconds: float = 1.0
+    sessionmaker: async_sessionmaker[AsyncSession],
+    stop: asyncio.Event,
+    poll_seconds: float = 1.0,
+    lease: timedelta = LEASE,
 ) -> None:
     """Poll for jobs until `stop` is set. A job in progress finishes first (or its lease runs
     out and another worker takes it)."""
+    from app.platform.schedule import ensure_scheduled
+
     log.info("worker started")
+    next_schedule_check = 0.0
     while not stop.is_set():
         try:
-            outcomes = await run_once(sessionmaker)
+            if asyncio.get_running_loop().time() >= next_schedule_check:
+                # Re-check every few minutes, in case a scheduled job went dead.
+                async with sessionmaker() as session:
+                    await ensure_scheduled(session)
+                next_schedule_check = asyncio.get_running_loop().time() + 300
+            async with sessionmaker() as session:
+                jobs = await claim(session, lease=lease)
+            outcomes = [await run_job(sessionmaker, job, lease) for job in jobs]
         except Exception:  # noqa: BLE001 - e.g. database unreachable: wait and try again
             log.exception("worker loop error")
             outcomes = []
