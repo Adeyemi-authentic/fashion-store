@@ -1,0 +1,57 @@
+# Render Blueprint for the FlyFit API (docs/DEPLOY.md walks through it).
+# Free plan: the instance sleeps after ~15 idle minutes and the outbox worker runs inside it
+# (WORKER_IN_API). That is safe because stock ignores expired holds when read (Phase 4);
+# jobs just run late. The storefront is on Vercel and reaches this service through its
+# /api rewrite (ADR-005); only Paystack's webhook calls it directly.
+services:
+  - type: web
+    name: flyfit-api
+    runtime: docker
+    plan: free
+    region: ohio # the same AWS region as the Neon database (us-east-2): ~1 ms per query
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass # deploy main only after GitHub Actions CI passes
+    buildFilter:
+      paths: ["api/**", "render.yaml"]
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: BRAND_NAME
+        value: FlyFit
+      - key: LOG_LEVEL
+        value: INFO
+      - key: WORKER_IN_API
+        value: "true"
+      - key: LLM_MODEL
+        value: claude-haiku-5-5
+      - key: EMBEDDING_MODEL
+        value: voyage-4
+      - key: ASSISTANT_DAILY_BUDGET_USD
+        value: "1.00"
+      - key: METRICS_TOKEN
+        generateValue: true
+      # sync: false = Render asks for the value when the Blueprint is first applied.
+      - key: PUBLIC_SITE_URL # the Vercel URL, e.g. https://flyfit.vercel.app
+        sync: false
+      - key: PROXY_SHARED_SECRET # the same value goes into Vercel
+        sync: false
+      - key: DATABASE_URL # Neon pooled URL
+        sync: false
+      - key: DATABASE_URL_DIRECT # Neon direct URL, for migrations
+        sync: false
+      - key: PAYSTACK_SECRET_KEY # sk_test_ only
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: VOYAGE_API_KEY
+        sync: false
+      - key: RESEND_API_KEY # optional: empty writes emails to the container's disk
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: SENTRY_DSN # optional
+        sync: false

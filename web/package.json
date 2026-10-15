@@ -28,5 +28,8 @@
     "selenium-webdriver": "^4.38.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }
