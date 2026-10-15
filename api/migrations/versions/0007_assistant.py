@@ -40,6 +40,8 @@ def downgrade() -> None:
     op.drop_table("assistant_spend")
     op.execute("DELETE FROM assistant_messages WHERE role = 'system'")
     op.drop_constraint(op.f(CK), "assistant_messages", type_="check")
-    op.create_check_constraint(op.f(CK), "assistant_messages", "role IN ('user', 'assistant', 'tool')")
+    op.create_check_constraint(
+        op.f(CK), "assistant_messages", "role IN ('user', 'assistant', 'tool')"
+    )
     op.drop_constraint(op.f("uq_assistant_messages_seq"), "assistant_messages", type_="unique")
     op.drop_column("assistant_messages", "seq")
