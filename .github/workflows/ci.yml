@@ -1,0 +1,110 @@
+# Every push and pull request: API checks and tests (including the migrations check), the
+# storefront's lint and typecheck, and a smoke test of the real API image with the
+# storefront built against it. Render deploys main only after this passes
+# (autoDeployTrigger: checksPass in render.yaml).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (lint, types, module boundaries, tests, migrations)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.23"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy app
+      - run: uv run lint-imports
+      # Starts its own throwaway Postgres + pgvector (pgserver). Includes the migrations
+      # check: models and migrations agree (alembic check) and downgrade -> upgrade works.
+      # AI keys are forced empty by conftest, so no test calls Claude or Voyage.
+      - run: uv run pytest -q
+
+  web:
+    name: Storefront (lint, typecheck)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+  image:
+    name: API image + storefront build (smoke test)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: flyfit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-retries 30
+    env:
+      DATABASE_URL: postgresql://postgres:ci@localhost:5432/flyfit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image Render will run
+        run: docker build -t flyfit-api ./api
+      - name: Start it (it runs the migrations itself)
+        run: |
+          docker run -d --name api --network host -e DATABASE_URL -e PORT=8000 flyfit-api
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8000/health && exit 0
+            sleep 1
+          done
+          docker logs api; exit 1
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.23"
+          enable-cache: true
+      - name: Seed the catalog (stand-in embedder, no AI keys in CI)
+        working-directory: api
+        run: uv sync --frozen && uv run python -m scripts.seed_catalog && uv run python -m scripts.embed_catalog
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the storefront against the image (prerenders every product page)
+        working-directory: web
+        env:
+          API_BASE_URL: http://localhost:8000
+        run: npm ci && npm run build
+      - name: Storefront serves a product page and proxies /api
+        working-directory: web
+        env:
+          API_BASE_URL: http://localhost:8000
+        run: |
+          npx next start -p 3000 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://localhost:3000/ && break; sleep 1; done
+          curl -fsS http://localhost:3000/api/health
+          slug=$(curl -fsS "http://localhost:3000/api/products?limit=1" | python3 -c "import json,sys; print(json.load(sys.stdin)['items'][0]['slug'])")
+          curl -fsS "http://localhost:3000/p/$slug" | grep -q "AI-generated"
+      - if: failure()
+        run: docker logs api
