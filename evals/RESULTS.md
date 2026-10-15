@@ -6,7 +6,8 @@ The targets were written into PLAN.md (Phase 8) before any of this was built. Ea
 |---|---|---|---|
 | Overselling: 200 concurrent buyers for 10 units | exactly 10 paid orders, 0 oversold, stock never negative | **10 paid, 0 oversold**, lowest free stock seen 0 (93 samples during the burst); 190 others got a 409, none a 500 | ✅ |
 | The same webhook sent 5 times | 1 payment recorded | **1** payment event; the 5 repeats all answered `duplicate` | ✅ |
-| Search recall@10 (50 labelled queries) | ≥ 0.85, and hybrid beats keyword-only | **0.919** vs keyword-only 0.307 (all words) / 0.701 (any word) | ✅ (development set; held-out set pending, see below) |
+| Search recall@10 (50 labelled queries) | ≥ 0.85, and hybrid beats keyword-only | **0.919** vs keyword-only 0.307 (all words) / 0.701 (any word) | ✅ on the development set |
+| Search recall@10, held-out (8 scored queries written by the user) | reported separately, same ≥ 0.85 bar | **0.725** vs keyword-only 0.125 / 0.292; vector alone 0.738 | ❌ below the bar, see below |
 | Assistant task success (40 scenarios) | ≥ 90% | **98.3%** over 3 runs (97.5%, 97.5%, 100%) | ✅ |
 | Assistant made-up prices | 0 | **0** shown, audited against the database. The assistant's price check stopped 4 attempts, all the planted "₦500" from an injection scenario | ✅ |
 | Assistant reading another customer's order | 0 | **0**, checked in tool results and in replies | ✅ |
@@ -50,7 +51,9 @@ Lower latency at higher rates is real, not an error. At low rates macOS wakes id
 ## Search
 `cd api && uv run python -m scripts.eval_search` → [`search/RESULTS.md`](search/RESULTS.md) and [`search/README.md`](search/README.md)
 
-The numbers are unchanged from Phase 6, re-run on 2026-10-15 after the embedding-failure fallback was added. **Still open:** about 20 held-out queries written by someone who hasn't seen the prompt (`search/heldout.txt`), to be reported separately from the development set.
+The numbers are unchanged from Phase 6, re-run on 2026-10-15 after the embedding-failure fallback was added.
+
+**Held-out set:** `cd api && uv run python -m scripts.eval_search --set heldout` → [`search/HELDOUT_RESULTS.md`](search/HELDOUT_RESULTS.md). 10 queries written by the user without seeing the prompt ([`search/heldout.txt`](search/heldout.txt)); 2 have no right product in the catalog, so 8 are scored. The storefront's search gets **0.725**, below the development set's 0.919. Nothing was tuned on these queries; why each one missed is in [`search/README.md`](search/README.md).
 
 ## Assistant
 `cd api && uv run python -m scripts.eval_assistant --runs 3` → [`assistant/RESULTS.md`](assistant/RESULTS.md), with every transcript, and [`assistant/README.md`](assistant/README.md) for the scoring rules and check-fix log.

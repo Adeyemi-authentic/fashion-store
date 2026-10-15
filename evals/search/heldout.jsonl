@@ -1,0 +1,10 @@
+{"id": "h01", "kind": "intent", "query": "something nice for my sister's traditional wedding", "rule": {"categories": ["aso-oke", "ankara"], "genders": ["women"], "occasions": ["wedding"]}}
+{"id": "h02", "kind": "exact", "query": "lekki sunset", "rule": {"patterns": ["Lekki Sunset"]}}
+{"id": "h03", "kind": "no-answer", "query": "Baggy pants , ankara material", "rule": {"categories": ["ankara"], "types": ["Wide-Leg Trousers", "Cargo Trousers", "Tailored Trousers"]}}
+{"id": "h04", "kind": "intent", "query": "interview worthy clothes for 27yrs old female", "rule": {"occasions": ["work"], "genders": ["women", "unisex"], "exclude_types": ["Scarf"]}}
+{"id": "h05", "kind": "no-answer", "query": "Blue gele under 12k", "rule": {"types": ["Gele", "Gele and Ipele Set", "Turban"], "colours_any": ["Blue", "Indigo"], "max_naira": 12000}}
+{"id": "h06", "kind": "price", "query": "Dinner date gown under 90k", "rule": {"types": ["Wrap Dress", "Kaftan Dress", "Slip Dress", "Boubou"], "max_naira": 100000}}
+{"id": "h07", "kind": "price", "query": "Cheap gifts for a friend, budget 30k", "rule": {"max_naira": 40000}}
+{"id": "h08", "kind": "colour", "query": "Agbada , black in color ", "rule": {"types": ["Three-Piece Agbada", "Grand Boubou"], "colours_any": ["Black"]}}
+{"id": "h09", "kind": "typo", "query": "Ankrra shirt ", "rule": {"categories": ["ankara"], "types": ["Short-Sleeve Shirt"]}}
+{"id": "h10", "kind": "colour", "query": "Colorful scarfs ", "rule": {"types": ["Scarf", "Gele", "Gele and Ipele Set", "Turban"], "colours_any": ["Coral", "Emerald", "Royal Blue", "Wine", "Fuchsia", "Multicolour"]}}

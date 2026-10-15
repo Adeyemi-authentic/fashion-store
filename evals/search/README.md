@@ -47,6 +47,28 @@ Each step was measured on all 50 queries. LLM answers vary between runs, so prom
 **Where it stands:** the storefront's search scores **0.919 recall@10** against **0.307** for all-words keyword search and **0.701** for any-word keyword search. The Phase 8 target (≥ 0.85, hybrid beats keyword-only) is met.
 
 **What this eval can't show yet:**
-- **It is a development set, not a held-out test.** The same person wrote the queries and the prompt, so the prompt may fit these queries better than real ones. Phase 8 should add about 20 queries written by someone who hasn't seen the prompt, and report those separately.
+- **It is a development set, not a held-out test.** The same person wrote the queries and the prompt, so the prompt may fit these queries better than real ones. The held-out set below checks that.
 - **Hybrid ≈ vector here.** Keyword search earns its place on exact names a model may not know, such as print names ("Lekki Sunset", "Harmattan") or a SKU, and none of the 50 queries test that. The held-out set should include some.
 - **The remaining misses are mostly ranking, not filtering:** a grand boubou below kaftans for "agbada", and aso-oke for "hand woven fabric".
+
+## Held-out set (2026-10-15)
+`heldout.txt` holds queries the user typed the way a shopper would, each with a plain-words "want" line, without seeing the prompt or these 50 queries. `heldout.jsonl` turns each "want" into a rule (two new rule fields: `patterns` for print names, `exclude_types`), and `uv run python -m scripts.label_search_queries --set heldout` labels them. A query whose "want" matches nothing in the catalog is kind `no-answer`: its rule must match nothing, and it is listed with what the shopper sees instead of being scored.
+
+**Judgement calls made turning "want" into rules** (the user can overrule any of them):
+- "Dinner date gown under 90k": the want line says below ₦100,000, so the rule uses ₦100,000. Boubous count as gowns.
+- "interview worthy clothes for 27yrs old female": the catalog's `work` occasion, women's or unisex items, no scarves.
+- "Colorful scarfs": scarves and women's headwear in Coral, Emerald, Royal Blue, Wine, Fuchsia or Multicolour. The adire scarves are indigo, rust or charcoal, so none count.
+- "something nice for my sister's traditional wedding": women's items tagged `wedding`, which in practice means aso-oke.
+- **No answer:** "Baggy pants, ankara material" (the ankara line has no trousers) and "Blue gele under 12k" (every gele is ₦60,000 or more, and the cheap headwear has no images yet, so it is hidden).
+
+**Result: 0.725 recall@10 over 8 scored queries** (one query moves the score by 0.125). Exact, typo and price queries do well; the misses:
+
+| Query | recall@10 | Why |
+|---|---|---|
+| something nice for my sister's traditional wedding | 0.00 | Claude picked occasion `traditional` from "traditional wedding"; the bridal and iro-and-buba sets are tagged `wedding`, and the women's ones only show up after the men's traditional outfits |
+| Colorful scarfs | 0.00 | The same miss as "head wrap" in the development set: search doesn't see a gele-and-ipele set as a scarf |
+| Dinner date gown under 90k | 0.80 | The search obeys the ₦90k in the query; the want line accepts up to ₦100k, so gowns from ₦90k to ₦100k count as missed |
+
+For the two no-answer queries the shopper sees ankara dresses and kimonos for "baggy pants", and an adire scarf and a hand fan for "blue gele under 12k" (the price filter was dropped because nothing matched it). Neither says "we don't sell that".
+
+**Not tuned on purpose.** Changing the prompt to fix these would make the held-out set a second development set. Fixes worth trying go into the next development round, then get checked on fresh held-out queries.

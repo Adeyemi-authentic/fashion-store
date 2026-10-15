@@ -1,0 +1,35 @@
+# Held-out search queries (Phase 8)
+# Write about 20. One query per block. Type it the way a real shopper would,
+# with lowercase, slang, typos and "k" prices all fine.
+# "want" = what you'd accept as a correct result, in plain words.
+# Delete the two examples below when you're done.
+
+query: something nice for my sister's traditional wedding
+want:  women's aso-oke or ankara outfits worn to weddings, not accessories
+
+query: lekki sunset
+want:  any product made in the Lekki Sunset print
+
+query: Baggy pants , ankara material
+want:  Any Pant trouser that's ankara 
+
+query: interview worthy clothes for 27yrs old female
+want:  coporate wear for females
+
+query: Blue gele under 12k
+want:  blue headwear price shouldnt me more than 12,000 naira
+
+query: Dinner date gown under 90k
+want:  women gown or dress that price is below 100,000 naira
+
+query: Cheap gifts for a friend, budget 30k
+want:  Any product or item below the price of 40k
+
+query: Agbada , black in color 
+want:  Agbada for men, must be black in color
+
+query: Ankrra shirt 
+want:  any shirt that is ankara outfits
+
+query: Colorful scarfs 
+want:  any scarfs or women headwear with bright colors or multicolors
