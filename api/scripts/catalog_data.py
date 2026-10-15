@@ -79,6 +79,9 @@ PRINT_NAMES = [
     "Festac",
     "Ilaje",
 ]
+# Used, in order, when the random pick repeats a name already in the catalog, so no two
+# products share a name (shoppers and the assistant can't tell two same-named items apart).
+SPARE_PRINT_NAMES = ["Indigo Tide", "Ikorodu", "Surulere", "Ajah", "Mushin", "Ketu", "Oshodi"]
 
 CATEGORIES: list[Category] = [
     Category(
@@ -237,6 +240,8 @@ def build_catalog() -> list[SeedProduct]:
     rng = random.Random(SEED)
     products: list[SeedProduct] = []
     used_slugs: set[str] = set()
+    used_names: set[str] = set()
+    spares = iter(SPARE_PRINT_NAMES)
 
     for cat in CATEGORIES:
         for i in range(cat.count):
@@ -249,6 +254,12 @@ def build_catalog() -> list[SeedProduct]:
                 slug = slugify(f"{cat.slug} {name} {n}")
                 n += 1
             used_slugs.add(slug)
+            # The slug above stays as first generated, so existing links, images and orders
+            # still point at the same product; only the name it is shown under changes.
+            while name in used_names:
+                print_name = next(spares)
+                name = f"{print_name} {ptype.name}"
+            used_names.add(name)
 
             lo, hi = ptype.price_naira
             base_naira = round_naira(rng.uniform(lo, hi))
