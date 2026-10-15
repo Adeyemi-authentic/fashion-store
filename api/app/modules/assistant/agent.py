@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from anthropic import APIError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -295,7 +296,15 @@ class Turn:
         final_row: AssistantMessage | None = None
         for _ in range(MAX_ROUNDS):
             await db.commit()  # nothing held open while the model thinks
-            resp, row, blocks = await self._call(messages, tool_defs)
+            try:
+                resp, row, blocks = await self._call(messages, tool_defs)
+            except APIError as exc:
+                # The model API failed (out of credit, overloaded, a dropped connection):
+                # end the turn with the fallback reply rather than a 500, so the shopper
+                # gets an answer and the stored conversation stays valid. Found when the
+                # account ran out of credit in the middle of the Phase 8 eval.
+                log.error("model call failed", extra={"error": f"{type(exc).__name__}: {exc}"})
+                break
 
             if resp.stop_reason == "tool_use":
                 messages.append({"role": "assistant", "content": blocks})

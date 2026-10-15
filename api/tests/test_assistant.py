@@ -507,3 +507,24 @@ async def test_search_and_policies_survive_the_embedding_service_being_down(
     assert resp.status_code == 200 and resp.json()["items"]
     found = await policies.search("how long do refunds take")
     assert any(c.heading == "Refunds" for c in found)
+
+
+async def test_a_failing_model_api_gets_the_fallback_not_a_500(
+    client: AsyncClient, claude: Callable[[Script], FakeClient]
+) -> None:
+    """Found when the account ran out of credit mid-eval: the 400 from the API became a 500."""
+    import httpx
+    from anthropic import APIConnectionError
+
+    def script(messages: list[dict[str, Any]], n: int) -> Response:
+        raise APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com"))
+
+    fake = claude(script)
+    resp = await ask(client, "hello")
+    assert resp.status_code == 200
+    assert resp.json()["reply"]["text"] == agent.FALLBACK_GENERIC
+
+    fake.messages.script = lambda m, n: say("Back again!")
+    await ask(client, "hello?")
+    sent = fake.messages.calls[-1]["messages"]
+    assert [m["role"] for m in sent[-3:]] == ["user", "assistant", "user"]  # still valid
