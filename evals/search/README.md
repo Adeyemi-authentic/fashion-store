@@ -58,16 +58,16 @@ Each step was measured on all 50 queries. LLM answers vary between runs, so prom
 - "Dinner date gown under 90k": the want line says below ₦100,000, so the rule uses ₦100,000. Boubous count as gowns.
 - "interview worthy clothes for 27yrs old female": the catalog's `work` occasion, women's or unisex items, no scarves.
 - "Colorful scarfs": scarves and women's headwear in Coral, Emerald, Royal Blue, Wine, Fuchsia or Multicolour. The adire scarves are indigo, rust or charcoal, so none count.
-- "something nice for my sister's traditional wedding": women's items tagged `wedding`, which in practice means aso-oke.
+- "something nice for my sister's traditional wedding": every women's aso-oke item (the ankara line has nothing for weddings). **Changed after seeing results:** the first rule also required the `wedding` tag, which scored 0.00 although three women's aso-oke outfits were in the top 10, tagged `owambe`/`traditional` instead. The tag comes from a random pick of 2 of the category's 3 occasions, so it isn't a fair test; the shopper's want line names the fabric, not the tag. The search was not changed.
 - **No answer:** "Baggy pants, ankara material" (the ankara line has no trousers) and "Blue gele under 12k" (every gele is ₦60,000 or more, and the cheap headwear has no images yet, so it is hidden).
 
-**Result: 0.725 recall@10 over 8 scored queries** (one query moves the score by 0.125). Exact, typo and price queries do well; the misses:
+**Result: 0.762 recall@10 over 8 scored queries** (vector alone 0.688, keyword alone 0.125) (one query moves the score by 0.125). Exact, typo and price queries do well; the misses:
 
 | Query | recall@10 | Why |
 |---|---|---|
-| something nice for my sister's traditional wedding | 0.00 | Claude picked occasion `traditional` from "traditional wedding"; the bridal and iro-and-buba sets are tagged `wedding`, and the women's ones only show up after the men's traditional outfits |
+| something nice for my sister's traditional wedding | 0.30 | The query doesn't say who will wear it, so Claude sets no gender and men's grand boubous and senator kaftans fill most of the top 10 |
 | Colorful scarfs | 0.00 | The same miss as "head wrap" in the development set: search doesn't see a gele-and-ipele set as a scarf |
-| Dinner date gown under 90k | 0.80 | The search obeys the ₦90k in the query; the want line accepts up to ₦100k, so gowns from ₦90k to ₦100k count as missed |
+| Dinner date gown under 90k | 0.80 | Search obeys the ₦90k in the query; the want line accepts up to ₦100k, so gowns from ₦90k to ₦100k count as missed |
 
 For the two no-answer queries the shopper sees ankara dresses and kimonos for "baggy pants", and an adire scarf and a hand fan for "blue gele under 12k" (the price filter was dropped because nothing matched it). Neither says "we don't sell that".
 

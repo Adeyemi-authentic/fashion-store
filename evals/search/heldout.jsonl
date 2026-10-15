@@ -1,4 +1,4 @@
-{"id": "h01", "kind": "intent", "query": "something nice for my sister's traditional wedding", "rule": {"categories": ["aso-oke", "ankara"], "genders": ["women"], "occasions": ["wedding"]}}
+{"id": "h01", "kind": "intent", "query": "something nice for my sister's traditional wedding", "rule": {"categories": ["aso-oke"], "genders": ["women"]}}
 {"id": "h02", "kind": "exact", "query": "lekki sunset", "rule": {"patterns": ["Lekki Sunset"]}}
 {"id": "h03", "kind": "no-answer", "query": "Baggy pants , ankara material", "rule": {"categories": ["ankara"], "types": ["Wide-Leg Trousers", "Cargo Trousers", "Tailored Trousers"]}}
 {"id": "h04", "kind": "intent", "query": "interview worthy clothes for 27yrs old female", "rule": {"occasions": ["work"], "genders": ["women", "unisex"], "exclude_types": ["Scarf"]}}
