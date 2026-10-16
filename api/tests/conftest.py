@@ -19,6 +19,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Test modules import app.main, which builds the app and reads settings, before the test
+# database exists. Point settings at a database that can't be reached until `database_url`
+# below sets the real one, so tests never read (or reach) the database in .env, and run the
+# same in CI, where there is no .env. Environment variables win over .env.
+for _key in ("DATABASE_URL", "DATABASE_URL_DIRECT"):
+    os.environ[_key] = "postgresql+psycopg://unused@invalid.localhost/flyfit_not_connected"
+for _key in ("VOYAGE_API_KEY", "ANTHROPIC_API_KEY"):
+    os.environ[_key] = ""
+
 
 def _url(server: pgserver.PostgresServer, dbname: str) -> str:
     socket_dir = server.get_uri().split("host=")[1]
