@@ -58,9 +58,11 @@ async def test_forged_forwarded_for_is_ignored(
     codes = [
         (await checkout(client, {"X-Forwarded-For": f"10.0.0.{i}"})).status_code for i in range(11)
     ]
-    assert codes[10] == 429  # all counted against the real (socket) address
+    assert codes[10] == 429  # all counted against one "direct" key
     wrong_secret = {"X-Proxy-Auth": "guess", "X-Forwarded-For": "10.9.9.9"}
     assert (await checkout(client, wrong_secret)).status_code == 429
+    # Shoppers coming through the storefront have their own limits.
+    assert (await checkout(client, via_proxy("102.89.2.2"))).status_code == 422
 
 
 async def test_signed_in_limit_follows_the_account_across_ips(

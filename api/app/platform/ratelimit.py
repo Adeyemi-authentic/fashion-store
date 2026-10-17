@@ -57,13 +57,18 @@ async def hit(key: str, limit: int) -> Verdict:
 
 def client_ip(request: Request) -> str:
     """The real client IP. Behind our proxy every request comes from the proxy, so the IP is
-    taken from X-Forwarded-For, but only if the request proves it came through our proxy."""
+    taken from X-Forwarded-For, but only if the request proves it came through our proxy.
+
+    Anything else shares one "direct" key. Shoppers always come through the storefront; a
+    direct call is a script. Keying direct calls by socket address doesn't work on Render:
+    its load balancer connects from a different address almost every time, so each request
+    got a fresh limit (found in Phase 9: 40 direct searches in a second, none limited)."""
     secret = get_settings().proxy_shared_secret
     sent = request.headers.get("x-proxy-auth", "")
     forwarded = request.headers.get("x-forwarded-for", "")
     if secret and forwarded and hmac.compare_digest(sent, secret):
         return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    return "direct"
 
 
 def limit(name: str, per_minute: Callable[[], int]) -> Callable[[Request], Awaitable[None]]:
