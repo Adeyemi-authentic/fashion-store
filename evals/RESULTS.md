@@ -12,7 +12,7 @@ The targets were written into PLAN.md (Phase 8) before any of this was built. Ea
 | Assistant made-up prices | 0 | **0** shown, audited against the database. The assistant's price check stopped 4 attempts, all the planted "₦500" from an injection scenario | ✅ |
 | Assistant reading another customer's order | 0 | **0**, checked in tool results and in replies | ✅ |
 | Prompt injection via product text / user message | 100% resisted | **18/18** (6 scenarios × 3 runs) | ✅ |
-| Catalog API p95 latency (cached) | < 200 ms at the tested rate, without Redis | **p95 1.5–5.4 ms from 50 to 800 req/s** on 1 API worker (local); saturates at 1,600 req/s | ✅ locally; re-run on Render in Phase 9 |
+| Catalog API p95 latency (cached) | < 200 ms at the tested rate, without Redis | **p95 1.5–5.4 ms from 50 to 800 req/s** on 1 API worker (local); saturates at 1,600 req/s. **On Render's free plan: ~250 ms p50 from Lagos (mostly the network) up to 20 req/s; saturates by 50 req/s** | ✅ locally; on Render the limit is the free plan's CPU, not the cache (see below) |
 | Assistant cost and latency | reported per conversation | **5.4 s and $0.0005** per conversation (p95 11.1 s); 4.8 s per shopper message | reported |
 
 ## Overselling and duplicate webhooks
@@ -43,6 +43,19 @@ The request mix is 45% product pages, 40% listings, 10% facets and 5% categories
 | 1,600 | 362 | 7,216 | 10,687 | 0 (saturated) |
 
 Lower latency at higher rates is real, not an error. At low rates macOS wakes idle processes a few ms late (timer coalescing), and the strict "from when it was due" number includes that. The "from send" figures in the JSON are 0.2–0.8 ms lower.
+
+### Deployed (Render free plan, 2026-10-18)
+`cd api && uv run python -m scripts.load.catalog_latency --target https://flyfit-api.onrender.com --rates 10 20 50` → [`load/catalog_latency_remote.json`](load/catalog_latency_remote.json)
+
+Run from Lagos on a phone hotspot against the API in Ohio. A bare `/health` takes 0.55–0.79 s from here (TCP connect alone 0.13–0.28 s), so most of each number below is the network, not the API.
+
+| Rate | p50 | p95 | p99 | Errors |
+|---|---|---|---|---|
+| 10 req/s | 249 ms | 281 ms | 573 ms | 0 |
+| 20 | 250 | 430 | 560 | 0 |
+| 50 | 3,635 | 9,213 | 12,819 | 0 (saturated) |
+
+The generator kept its schedule (late p95 ≈ 1 ms), so the queueing at 50 req/s is the server. Render's free instance gets a fraction of a CPU; the same code saturates at 1,600 req/s on a full laptop core, which puts the free plan at well under a tenth of that. **No Redis (ADR-006 stands):** the cached reads already come from memory inside the API, so Redis would add a network hop to the same work. The ceiling is CPU, and the fix is a paid instance (or more of them), not a cache. In practice shoppers rarely hit the catalog API at all: product, category and home pages are prerendered and served by Vercel, and only search, the bag, checkout and the assistant call Render. The < 200 ms target is not testable from Lagos (the round trip alone is close to it); it would need a run from inside us-east.
 
 **Caveat:** this is one uvicorn worker on an M-series Mac, with the load generator on the same machine. Render's free plan has a fraction of one CPU, so the deployed numbers will be lower. Phase 9 re-runs this with `--target <api url>`. Redis gets added only if that run misses the target (ADR-006).
 

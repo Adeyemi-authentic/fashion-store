@@ -1,0 +1,55 @@
+{
+  "run_at": "2026-10-17T23:38:08+00:00",
+  "where": "https://flyfit-api.onrender.com",
+  "mix": "45% product page, 40% listing (category + sort), 10% facets, 5% categories",
+  "results": [
+    {
+      "rate_rps": 10,
+      "seconds": 20.0,
+      "requests": 200,
+      "achieved_rps": 9.8,
+      "p50_ms": 249.0,
+      "p95_ms": 280.7,
+      "p99_ms": 572.6,
+      "max_ms": 790.7,
+      "mean_ms": 258.2,
+      "p95_from_send_ms": 280.4,
+      "errors": {},
+      "generator_late_p95_ms": 1.2,
+      "generator_cpu_max": 0.01,
+      "meets_target": false
+    },
+    {
+      "rate_rps": 20,
+      "seconds": 20.0,
+      "requests": 400,
+      "achieved_rps": 19.7,
+      "p50_ms": 249.7,
+      "p95_ms": 429.6,
+      "p99_ms": 560.2,
+      "max_ms": 657.7,
+      "mean_ms": 271.6,
+      "p95_from_send_ms": 429.3,
+      "errors": {},
+      "generator_late_p95_ms": 1.1,
+      "generator_cpu_max": 0.02,
+      "meets_target": false
+    },
+    {
+      "rate_rps": 50,
+      "seconds": 20.0,
+      "requests": 1000,
+      "achieved_rps": 43.1,
+      "p50_ms": 3635.2,
+      "p95_ms": 9213.4,
+      "p99_ms": 12818.5,
+      "max_ms": 19029.9,
+      "mean_ms": 4066.1,
+      "p95_from_send_ms": 9212.6,
+      "errors": {},
+      "generator_late_p95_ms": 1.1,
+      "generator_cpu_max": 0.1,
+      "meets_target": false
+    }
+  ]
+}
