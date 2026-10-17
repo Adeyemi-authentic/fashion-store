@@ -27,6 +27,9 @@ for _key in ("DATABASE_URL", "DATABASE_URL_DIRECT"):
     os.environ[_key] = "postgresql+psycopg://unused@invalid.localhost/flyfit_not_connected"
 for _key in ("VOYAGE_API_KEY", "ANTHROPIC_API_KEY"):
     os.environ[_key] = ""
+# The test client talks plain http, so cookies must not be Secure (an https site URL in .env
+# made the signed-in tests lose their session cookie).
+os.environ["PUBLIC_SITE_URL"] = "http://localhost:3000"
 
 
 def _url(server: pgserver.PostgresServer, dbname: str) -> str:
