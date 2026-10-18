@@ -191,7 +191,7 @@ Read this before starting Phase 0, 2, 4 and 5. Each item says what can go wrong,
 | 6 | Smaller items. | Drop `variants.version` (the conditional UPDATE already prevents overselling). Test that `stock_reserved` = sum of unreleased reservations. Add `cancelled` state. Model `claude-haiku-5-5`. | Section 2, Phase 4 tests, Stack |
 | 7 | Redis was an extra service with no measured need. | Dropped (ADR-006). Postgres + Next.js ISR + an in-process cache; Phase 8 decides if Redis is ever needed. | Section 1, Phase 5, Phase 8 |
 
-**Brand note:** FlyFit is the chosen name, but a US company (FLYFIT Holdings LLC) holds a FLYFIT apparel trademark. Keep the name in one config value, label everything as a fictional concept build, and don't imitate their branding. Revisit before the public launch in Phase 9.
+**Brand note:** FlyFit is the chosen name, but a US company (FLYFIT Holdings LLC) holds a FLYFIT apparel trademark. Keep the name in one config value, label everything as a fictional concept build, and don't imitate their branding. Revisit before the public launch in Phase 9. **Rechecked 2026-10-18:** US records show FLYFIT (FLYFIT Holdings LLC, serial 87628330, athletic apparel) and a registered FLY FIT (reg. 6034687, class 25 clothing); no FlyFit fashion brand found in Nigeria. Decision: keep it for the concept build, labelled fictional everywhere, no imitation of their branding; a real launch must rename (one config value, `BRAND_NAME`).
 
 **Images note:** AI-generated, one shared style prompt for all 150 products, generated once by a script that can be rerun (`scripts/generate_images.py`), labelled as AI-generated on the site and in the README.
 
