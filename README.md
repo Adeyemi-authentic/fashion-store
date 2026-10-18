@@ -82,7 +82,7 @@ Tests: `cd api && uv run pytest` (299 tests, against a throwaway Postgres starte
 | `api/` | FastAPI app: `app/modules/*` (catalog, cart, orders, payments, accounts, admin, search, assistant), migrations, `scripts/` (seed, evals, load tests) |
 | `web/` | Next.js storefront, Playwright journeys |
 | `evals/` | Every eval and load-test result, with the command that made it |
-| `docs/` | Architecture, ADRs, deploy guide, [case study](docs/CASE_STUDY.md) |
+| `docs/` | Architecture, ADRs, deploy guide |
 | `notes/` | One write-up per build phase: what, why, trade-offs |
 
 ## Known limits

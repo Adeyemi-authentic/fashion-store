@@ -24,3 +24,6 @@ next-env.d.ts
 coverage/
 scripts/out/
 evals/search/.cache/
+
+# Personal launch material (case study, video script, LinkedIn draft): kept local only
+private/

@@ -17,7 +17,7 @@
 6. `e94510c`: **Catalog latency on Render** (see below).
 7. `1e884af`: **Tests pin `PUBLIC_SITE_URL` to http.** An https URL in `.env` made cookies `Secure`, and the http test client dropped them.
 8. `f075717`: **Rate limits for direct calls** (see below).
-9. **Packaging:** the README (live link, architecture, results table, interesting problems), [`docs/CASE_STUDY.md`](../docs/CASE_STUDY.md), [`docs/launch/DEMO_VIDEO.md`](../docs/launch/DEMO_VIDEO.md), [`docs/launch/LINKEDIN_POST.md`](../docs/launch/LINKEDIN_POST.md), and a trademark recheck (PLAN 3a).
+9. **Packaging:** the README (live link, architecture, results table, interesting problems), and a trademark recheck (PLAN 3a). The case study, demo video script and LinkedIn draft are kept outside the repo.
 
 ## Walkthrough to practise aloud: "a push to main, to a paying customer"
 1. **Push to `main`.** GitHub Actions runs three jobs: API checks and tests, storefront checks, and the image smoke test.
