@@ -40,8 +40,17 @@ Order matters a little: Render's URL is needed by Vercel, and Vercel's URL by Re
    | `APP_ENV` | `production` |
 
    The build fetches the catalog from Render to prerender product pages, so Render must be up (a sleeping instance wakes in under a minute; the build waits).
+
+   Gotchas found on the first deploy (2026-10-18):
+   - **Set the variables before the first build.** Without `API_BASE_URL` the build fetches the catalog from `localhost` and `npm run build` exits with 1. (`npm warn Unknown env config "cache-dir"` in the log is Vercel's own and harmless.)
+   - **Use the production domain.** Vercel shows several URLs. The team-scoped one (`<project>-<team>.vercel.app`) sits behind Vercel Authentication and redirects strangers to a login page; the production alias (Project → Overview → Domains) is public. Put that one in `PUBLIC_SITE_URL` on **both** services, or Paystack returns payers to a login page and the assistant strips its own links.
+   - **Paste API keys without quotes or spaces.** A bad `ANTHROPIC_API_KEY` doesn't fail loudly: the assistant answers every message with its fallback ("Sorry, I couldn't finish that just now…"). An empty key gives "assistant unavailable" instead.
 5. **Paystack** (test mode). Settings → API Keys & Webhooks → Test Webhook URL: `https://<render url>/payments/webhook`. No callback URL is needed: each checkout sends its own (`PUBLIC_SITE_URL/checkout/callback`).
-6. **Check:** pay in test mode (below) and see the order turn `paid`. The confirmation email shows in Resend's dashboard; without `RESEND_API_KEY` it is only written to the container's disk, which you can't open on the free plan.
+6. **Check:**
+   - `curl <vercel url>/api/health` returns `{"status":"ok"}` through the proxy.
+   - 40 parallel direct calls to `<render url>/search?q=x` should include 429s (calls that skip the storefront share one rate-limit key).
+   - Ask the assistant a question and get a real answer, not the fallback.
+   - Pay in test mode (below) and see the order turn `paid`. The confirmation email shows in Resend's dashboard; without `RESEND_API_KEY` it is only written to the container's disk, which you can't open on the free plan.
 
 ## Paying in test mode
 Checkout sends the shopper to Paystack's test-mode page (no real money). There: **Pay with Card**, then pick **Success** (or **Declined**, to see the failure path), then **Pay NGN …**. This is the same flow the Playwright checkout journeys drive (`web/e2e/checkout.spec.ts`). Paystack's other test cards (PIN, OTP, bank transfer) are listed at https://paystack.com/docs/payments/test-payments/.
