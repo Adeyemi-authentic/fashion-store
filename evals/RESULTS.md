@@ -1,6 +1,6 @@
 # FlyFit: eval, load and concurrency results
 
-The targets were written into PLAN.md (Phase 8) before any of this was built. Each row links to the detail and gives the command that reproduces it. Every run uses a throwaway local Postgres (pgserver), never the Neon database. Last updated 2026-10-15.
+The targets were written into PLAN.md (Phase 8) before any of this was built. Each row links to the detail and gives the command that reproduces it. Every run uses a throwaway local Postgres (pgserver), never the Neon database, except the two marked *deployed*, which read the live catalog through the live API. Last updated 2026-10-18 (deployed runs added in Phase 9).
 
 | What | Target | Result | Met? |
 |---|---|---|---|
@@ -57,7 +57,7 @@ Run from Lagos on a phone hotspot against the API in Ohio. A bare `/health` take
 
 The generator kept its schedule (late p95 ≈ 1 ms), so the queueing at 50 req/s is the server. Render's free instance gets a fraction of a CPU; the same code saturates at 1,600 req/s on a full laptop core, which puts the free plan at well under a tenth of that. **No Redis (ADR-006 stands):** the cached reads already come from memory inside the API, so Redis would add a network hop to the same work. The ceiling is CPU, and the fix is a paid instance (or more of them), not a cache. In practice shoppers rarely hit the catalog API at all: product, category and home pages are prerendered and served by Vercel, and only search, the bag, checkout and the assistant call Render. The < 200 ms target is not testable from Lagos (the round trip alone is close to it); it would need a run from inside us-east.
 
-**Caveat:** this is one uvicorn worker on an M-series Mac, with the load generator on the same machine. Render's free plan has a fraction of one CPU, so the deployed numbers will be lower. Phase 9 re-runs this with `--target <api url>`. Redis gets added only if that run misses the target (ADR-006).
+**Caveat:** this is one uvicorn worker on an M-series Mac, with the load generator on the same machine. Render's free plan has a fraction of one CPU, so the deployed numbers are lower: see the deployed run above (Phase 9). It found the free plan's CPU, not caching, is the limit, so ADR-006 (no Redis) stands.
 
 **The first version of this test measured the wrong thing.** One Python process with a 1,000-connection pool fell behind its own schedule at about 150 req/s. ApacheBench on the same endpoint showed the API doing about 3,800 req/s. Four generator processes with small pools fixed it, and each one now reports its CPU use, so a saturated generator is visible in the results.
 
@@ -72,6 +72,7 @@ The numbers are unchanged from Phase 6, re-run on 2026-10-15 after the embedding
 `cd api && uv run python -m scripts.eval_assistant --runs 3` → [`assistant/RESULTS.md`](assistant/RESULTS.md), with every transcript, and [`assistant/README.md`](assistant/README.md) for the scoring rules and check-fix log.
 
 - **Model:** `claude-haiku-5-5` at medium effort.
+- **Deployed latency (2026-10-18):** 4 messages through the live site from Lagos took 7.2, 2.7, 3.1 and 2.8 s, all real answers. Running locally against Neon it was 13–20 s per message in the browser, because each of ~25 database round trips crossed the Atlantic; on Render, next to Neon, they take milliseconds.
 - **The 2 failures out of 120 conversations:**
   - Scenario 12, run 1: a correct reply ("no linen shirt under ₦30,000", then the cheapest one with its price) failed a check that didn't match its own spec. The check has since been fixed and the fix is logged.
   - Scenario 22, run 2: the gele's length was answered without looking at the size guide. A real miss.
